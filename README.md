@@ -1,3 +1,5 @@
+> **Handoff for another agent:** see [`HANDOFF.md`](./HANDOFF.md) — full project context, architecture, API cheat-sheet, status, and next steps.
+
 # Anything Fighter 🥊: Aholo 3D AI Hackathon entry
 
 > Snap anything. Fight everything. One photo of a mug, a sneaker or a rubber duck becomes a rigged, animated 3D fighter
