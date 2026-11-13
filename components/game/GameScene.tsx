@@ -1,9 +1,9 @@
 "use client";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Arena } from "@/components/arena/Arena";
-import { AholoSplatLayer } from "@/components/arena/AholoSplatLayer";
+import { AholoSplatLayer, isMobileGPU } from "@/components/arena/AholoSplatLayer";
 import { CameraRig, HitSparks } from "./Effects";
 import { Fighter } from "./Fighter";
 import { StudioEnv } from "./StudioEnv";
@@ -108,10 +108,14 @@ export default function GameScene() {
   useEffect(() => {
     sim.half = arena.kind === "splat" && arena.half ? arena.half : ARENA_HALF;
   }, [arena]);
+  // Mobile: cap DPR at 1.5 and skip MSAA (two WebGL canvases at DPR 2.6 is what gets contexts killed on phones).
+  const [mobile] = useState(isMobileGPU);
+  // If the R3F context is lost and not restored within 2.5 s, remount the canvas (fighters must never vanish).
+  const [glKey, setGlKey] = useState(0);
   if (!fighters) return null;
   const splat = arena.kind === "splat" && arena.url;
   return (
-    <div className="absolute inset-0" data-game-root>
+    <div className="absolute inset-0 bg-[#0d0b09]" data-game-root data-arena={arena.kind}>
       {splat && (
         <AholoSplatLayer
           urls={arena.urls?.length ? arena.urls : [arena.url!]}
@@ -119,16 +123,27 @@ export default function GameScene() {
           origin={arena.origin}
           scale={arena.scale}
           yaw={arena.yaw}
+          poster={arena.fallbackPano}
           onFail={splatFailed}
         />
       )}
       <Canvas
+        key={glKey}
         className="!absolute inset-0"
         shadows
-        dpr={[1, 2]}
+        dpr={mobile ? [1, 1.5] : [1, 2]}
         camera={{ fov: 40, position: [0, 1.6, 5.5], near: 0.05, far: 200 }}
-        gl={{ alpha: !!splat, preserveDrawingBuffer: true, antialias: true }}
+        gl={{ alpha: !!splat, preserveDrawingBuffer: true, antialias: !mobile, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {
+          const el = gl.domElement;
+          let restored = true;
+          el.addEventListener("webglcontextlost", (e) => {
+            e.preventDefault();
+            restored = false;
+            console.warn("[game] R3F WebGL context lost");
+            setTimeout(() => !restored && setGlKey((k) => k + 1), 2500);
+          });
+          el.addEventListener("webglcontextrestored", () => (restored = true));
           // perf probe for scripts/fps.mjs (debug only): draw calls / triangles / textures
           if (new URLSearchParams(window.location.search).has("debug")) (window as unknown as { __gl: typeof gl }).__gl = gl;
         }}
@@ -167,8 +182,10 @@ export default function GameScene() {
   );
 }
 
-/** Splat couldn't load on this device: fall back to the world's panorama, else the built-in ring. */
-function splatFailed() {
+/** Splat couldn't load / draw on this device: fall back to the world's panorama, else the built-in ring. */
+function splatFailed(reason?: string) {
   const a = useGame.getState().arena;
+  if (a.kind !== "splat") return;
+  console.warn(`[game] splat arena fallback (${reason ?? "unknown"}) → ${a.fallbackPano ? "panorama" : "Neon Ring"}`);
   useGame.setState({ arena: a.fallbackPano ? { kind: "pano", url: a.fallbackPano, name: a.name } : { kind: "stage", name: a.name } });
 }

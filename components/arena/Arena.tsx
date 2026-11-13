@@ -9,20 +9,37 @@
  *  kind: "splat" → Aholo Viewer 3DGS layer (SpatialGen splats / Aholo Reality room scan) + shadow-catcher floor
  */
 import { useTexture } from "@react-three/drei";
-import { Suspense } from "react";
+import { useThree } from "@react-three/fiber";
+import { Component, Suspense, useLayoutEffect, type ReactNode } from "react";
 import * as THREE from "three";
 import type { ArenaSpec } from "@/lib/game/store";
 
 export function Arena({ spec }: { spec: ArenaSpec }) {
   if (spec.kind === "pano" && spec.url) {
     return (
-      <Suspense fallback={<StageArena />}>
-        <PanoArena url={spec.url} />
-      </Suspense>
+      <ArenaBoundary>
+        <Suspense fallback={<StageArena />}>
+          <PanoArena url={spec.url} />
+        </Suspense>
+      </ArenaBoundary>
     );
   }
   if (spec.kind === "splat") return <SplatFloor />;
   return <StageArena />;
+}
+
+/** A panorama that fails to load (expired URL, network) must not take the whole scene down: show Neon Ring. */
+class ArenaBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(e: unknown) {
+    console.warn("[arena] panorama failed, using Neon Ring", e);
+  }
+  render() {
+    return this.state.failed ? <StageArena /> : this.props.children;
+  }
 }
 
 const RING_POSTS: [number, number][] = [
@@ -32,11 +49,33 @@ const RING_POSTS: [number, number][] = [
   [5.6, 2.2],
 ];
 
+/**
+ * Scene-level background/fog/environment. NB: `<color attach="background">` / `<primitive attach="background">`
+ * inside a <group> attach to the *group* (a no-op), not the scene — that's why the panorama fallback rendered
+ * black until 13 Nov 2026. Set them on the scene and restore on unmount (splat arenas need a null background).
+ */
+function useSceneLook(background: THREE.Color | THREE.Texture | null, fog: THREE.Fog | null, environment?: THREE.Texture | null) {
+  const scene = useThree((s) => s.scene);
+  useLayoutEffect(() => {
+    const prev = { background: scene.background, fog: scene.fog, environment: scene.environment };
+    scene.background = background;
+    scene.fog = fog;
+    if (environment !== undefined) scene.environment = environment;
+    return () => {
+      scene.background = prev.background;
+      scene.fog = prev.fog;
+      if (environment !== undefined) scene.environment = prev.environment;
+    };
+  }, [scene, background, fog, environment]);
+}
+
+const STAGE_BG = new THREE.Color("#0d0b09");
+const STAGE_FOG = new THREE.Fog("#0d0b09", 9, 26);
+
 export function StageArena() {
+  useSceneLook(STAGE_BG, STAGE_FOG);
   return (
     <group>
-      <color attach="background" args={["#0d0b09"]} />
-      <fog attach="fog" args={["#0d0b09", 9, 26]} />
       {/* floor */}
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <circleGeometry args={[30, 64]} />
@@ -89,10 +128,9 @@ function PanoArena({ url }: { url: string }) {
   const tex = useTexture(url);
   tex.mapping = THREE.EquirectangularReflectionMapping;
   tex.colorSpace = THREE.SRGBColorSpace;
+  useSceneLook(tex, null, tex);
   return (
     <group>
-      <primitive attach="background" object={tex} />
-      <primitive attach="environment" object={tex} />
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <circleGeometry args={[7, 64]} />
         <shadowMaterial opacity={0.45} />

@@ -72,12 +72,20 @@ export const sim = {
   time: 60,
   /** half-width of the walkable fight line (per arena: generated worlds can be narrower) */
   half: ARENA_HALF,
+  /** starting distance from centre (CameraRig sets 1.05 in portrait so the opening frame isn't tiny) */
+  startHalf: 1.6,
   /** camera state shared with the Aholo Viewer splat layer */
-  cam: { pos: [0, 1.6, 5] as [number, number, number], target: [0, 1.1, 0] as [number, number, number], fov: 40 },
+  cam: {
+    pos: [0, 1.6, 5] as [number, number, number],
+    target: [0, 1.1, 0] as [number, number, number],
+    fov: 40,
+    /** portrait 3/4 camera yaw (rad); the splat layer un-rotates it so the tuned backdrop stays in view */
+    yaw: 0,
+  },
 };
 
 export function resetSim() {
-  sim.f = [newFighter(-1.6, 1), newFighter(1.6, -1)];
+  sim.f = [newFighter(-sim.startHalf, 1), newFighter(sim.startHalf, -1)];
   sim.fx = { shake: 0, hitstop: 0, slowmo: 1, sparks: [] };
   sim.time = 60;
 }
