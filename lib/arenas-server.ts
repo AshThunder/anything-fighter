@@ -2,7 +2,7 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { BUILTIN_ARENAS, type ArenaDef } from "./arenas";
-import { isWorldFailed, listWorldJobIds, loadWorldJob, STUCK_MS, worldDetail, type WorldDetail } from "./world";
+import { isWorldFailed, isWorldStuck, listWorldJobIds, loadWorldJob, worldDetail, type WorldDetail } from "./world";
 
 export const ARENA_ROOT = path.join(process.cwd(), "public", "arenas");
 export const arenaAsset = (id: string, file: string) => `/api/assets/arenas/${id}/${file}`;
@@ -20,10 +20,9 @@ export async function shippedWorldIds(id: string): Promise<string[]> {
   return raw.split(/\s+/).filter((x) => /^[A-Za-z0-9]+$/.test(x));
 }
 
-function statusNote(kind: string, d: WorldDetail | null, worldId: string): { note: string; stuck: boolean; status?: string; progress?: number } {
+async function statusNote(kind: string, d: WorldDetail | null, worldId: string): Promise<{ note: string; stuck: boolean; status?: string; progress?: number }> {
   if (!d) return { note: `${kind} status unknown (${worldId})`, stuck: false };
-  const ageMs = Date.now() - (d.updateTime ?? d.createTime ?? Date.now());
-  const stuck = d.status === "RUNNING" && (d.progress ?? 0) === 0 && ageMs > STUCK_MS;
+  const stuck = await isWorldStuck(d, worldId);
   const pct = Math.round((d.progress ?? 0) * 100);
   const what = d.status === "RUNNING" ? `generating ${pct}%` : "queued at Aholo";
   return {
@@ -67,7 +66,7 @@ async function resolveShippedPending(id: string, ids: string[]): Promise<ArenaDe
   const alive = ids.map((w, i) => ({ w, d: details[i] })).filter((x) => !isWorldFailed(x.d?.status));
   if (!alive.length) return null;
   const best = alive.find((x) => x.d?.status === "RUNNING") ?? alive[0];
-  const s = statusNote(kind, best.d, best.w);
+  const s = await statusNote(kind, best.d, best.w);
   return { id, name, prompt, source: reality ? "reality" : "spatialgen", worldId: best.w, pending: true, ...s };
 }
 

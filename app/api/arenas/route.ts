@@ -1,6 +1,6 @@
 import { connection, NextResponse } from "next/server";
 import { listArenas } from "@/lib/arenas-server";
-import { createWorldGeneration, STUCK_MS, worldQueue, WorldQueueBusy } from "@/lib/world";
+import { createWorldGeneration, isWorldStuck, worldQueue, WorldQueueBusy } from "@/lib/world";
 
 export const maxDuration = 30;
 
@@ -11,14 +11,14 @@ export async function GET() {
   const queue =
     q === null
       ? null
-      : q.map((w) => ({
+      : await Promise.all(q.map(async (w) => ({
           worldId: w.worldId,
           name: w.name,
           status: w.status,
           progress: w.progress ?? 0,
           since: w.createTime,
-          stuck: w.status === "RUNNING" && (w.progress ?? 0) === 0 && Date.now() - (w.updateTime ?? w.createTime ?? Date.now()) > STUCK_MS,
-        }));
+          stuck: await isWorldStuck(w),
+        })));
   return NextResponse.json({ arenas, queue });
 }
 
