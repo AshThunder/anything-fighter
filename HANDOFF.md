@@ -58,27 +58,32 @@ For Asset, World, and Lux3D, prefer the official SDKs over raw `fetch`:
 - SDK overview: https://labs.aholo.ai/api-docs/en/sdk
 - Runnable examples: https://github.com/manycoretech/aholo-spatial-sdk (and `typescript/examples`)
 - Auth is the same as REST: env var `AHOLO_API_KEY`, or `apiKey` in client config. Region `com` → `https://api.aholo.ai` (this project is international / `com`, not `cn`).
-- Typical call chains (TS method names): `createAssetClient` → `uploadFile`; `world.generations.create` / `world.reconstructions.create` → `world.waitFor(worldId)`; `lux3d.imgTo3d.create({ img, version: "G1" })` → `lux3d.tasks.waitFor(taskId)`.
+- Typical call chains (TS method names): `createAssetClient` → `uploadFile`; `world.generations.create` / `world.reconstructions.create` → `world.waitFor(worldId)`; `lux3d.imgTo3d.create({ img, version: "G1" })` → `lux3d.tasks.waitFor(taskId)`. (This app replaces `waitFor` with one `retrieve` per client poll.)
 - World/Lux3D are always async: create, then poll (`waitFor` / `tasks.waitFor`). Do not assume a create call returns the finished asset.
 
-**RenderCloud has no official SDK.** Call it through the OpenAPI (`POST /global/rendercloud/v1/jobs`, mesh ingest under `/global/rendercloud/v1/mesh-upload-process/task/*`). That is already how `lib/poster.ts` and `scripts/render-poster.mjs` work.
+**RenderCloud has no official SDK.** Call it through the OpenAPI (`POST /global/rendercloud/v1/jobs`, mesh ingest under `/global/rendercloud/v1/mesh-upload-process/task/*`). `lib/poster.ts` sends those requests through the `@manycore/aholo-sdk-core` gateway client.
 
 **3D Gaussian splat viewing:** use `@manycore/aholo-viewer` (already vendored to `public/vendor/aholo-viewer` because bundling it through Next/Turbopack breaks its Blob-URL workers). See `components/arena/AholoSplatLayer.tsx`.
 
 **Lux3D agent skill (read before changing rig/mesh/retarget calls):** https://labs.aholo.ai/api-docs/en/skills/lux3d
 Also: skills index https://labs.aholo.ai/api-docs/en/skills, authentication https://labs.aholo.ai/api-docs/en/authentication, interactive API https://labs.aholo.ai/api-docs/en/api-reference/, ClawHub mirror of the Lux3D skill https://clawhub.ai/violalulu/lux3d.
 
-### Migration status (important)
+### SDK migration: done (13 Nov 2026, commit `1c425bf`)
 
-A **migration from the hand-written HTTP client to the official SDKs is in progress.** As of the last handoff commit, `package.json` still does **not** depend on `@manycore/aholo-sdk-asset`, `-world`, or `-lux3d`. The live pipeline (`lib/aholo.ts`, `lib/world.ts`, `scripts/aholo-cli.mjs`) still talks to `https://api.aholo.ai` with raw `fetch` and an `Authorization` header set to the raw key.
+All Aholo calls in the deployed app go through the official packages, created once in **`lib/aholo-sdk.ts`** (server-only; key from `AHOLO_API_KEY`; `region: "com"`, `baseUrl` = `AHOLO_API_BASE` or `https://api.aholo.ai`; 45 s request timeout):
 
-When you touch Aholo integration:
+| Package | Used in | Calls |
+|---|---|---|
+| `@manycore/aholo-sdk-asset` | `uploadAsset()` (photo, room scan, posed/normalised GLBs) | `uploadBuffer` |
+| `@manycore/aholo-sdk-lux3d` | `lib/aholo.ts` `lux3d.*` wrappers | `multimodalToImage.create`, `imageToFourView.create` (wired, unused), `imgTo3d.create`, `humanoidAutoRig.create`, `humanoidAnimationRetarget.create`, `multiFormatExport.create`, `tasks.retrieve` |
+| `@manycore/aholo-sdk-world` | `lib/world.ts` | `generations.create`, `reconstructions.create`, `retrieve`, `list` |
+| `@manycore/aholo-sdk-core` | `lib/poster.ts` (RenderCloud), error mapping | `createGatewayClient().gatewayRequest` (RenderCloud has no SDK; its OpenAPI routes go through the core transport), `AholoError` / `BusinessError` / `RateLimitError` |
 
-1. Prefer finishing or extending the SDK migration rather than adding more hand-rolled HTTP helpers.
-2. Leave RenderCloud on OpenAPI (no SDK exists).
-3. Keep the API key server-only (`process.env.AHOLO_API_KEY`, never `NEXT_PUBLIC_*`).
-4. Do not break the poll-driven job state machine or mock mode while swapping the transport.
-5. The REST cheat-sheet in §6 is still accurate for the *current* code and for RenderCloud; treat the SDK docs as the target for Asset / World / Lux3D.
+Rules kept: key server-only; mock mode when no key; spend guard; **poll-driven state machine** (one `create` or one `tasks.retrieve` / `world.retrieve` per request; the SDKs' blocking `waitFor` helpers are deliberately not used inside serverless requests). `toAholoError()` maps SDK errors to the app's `AholoError` (429 / 5xx / network / timeouts are transient and retried on the next poll; `BusinessError` keeps its `c` code, e.g. `RIG_ELIGIBILITY_FAILED`). `img-to-3d` still sends `customSize: 1800` (not in the SDK's TS type; passed through in the JSON body). Verified live on prod with forge `gen-mwemw090-24ff0e` (see §9).
+
+The one-off CLI scripts in `scripts/` (`aholo-cli.mjs`, `forge-fighter.mjs`, `gen-worlds.mjs`, `reconstruct-room.mjs`, `render-poster.mjs`) still use raw REST; they are not part of the deployed app. Migrate them to the SDKs if you touch them.
+
+In-app visibility: a **"Powered by Aholo" strip** (`components/ui/PoweredBy.tsx`) lists the services that actually built each fighter (`FighterDef.services`, set by `jobServices()` in `lib/aholo.ts`, inferred by `fighterServices()` in `lib/fighters.ts` for older fighters). Shown on the forge panel (planned services), the live forge page (lights up per stage), the select screen and every gallery card.
 
 Manycore surface already in the product (keep these, and make them obvious in the UI and the project report):
 
@@ -160,7 +165,7 @@ The form also asks for **ecosystem devices** (use "None" unless the owner adds h
 
 ### Credits
 
-Hackathon grant was **3,600** credits. Balance was about **3,148** before testing on 13 Nov 2026. Live end-to-end forges and related tests that day were estimated at **~120–140 credits**. **Do not treat that as an exact remaining balance — check the Aholo dashboard** before running more live jobs.
+Hackathon grant was **3,600** credits. Balance was about **3,148** before testing on 13 Nov 2026. Live end-to-end forges and related tests that day were estimated at **~120–140 credits** (morning), then **~40–45** for the Mama re-rig (rig 15 + 8-clip retarget + RenderCloud poster) and **~40–45** for the SDK verification forge (mesh 1 + rig 15 + 8-clip retarget + poster; concept step skipped). Rough total for 13 Nov: **~200–230**. **Do not treat that as an exact remaining balance — check the Aholo dashboard** before running more live jobs.
 
 Live forges are capped in the app to protect the budget (`FORGE_IP_DAILY_LIMIT` default 2 per IP per Lagos day, `FORGE_GLOBAL_DAILY_LIMIT` default 15). A full live forge is on the order of **~35–60 credits** (concept image ~12, img-to-3D ~1, auto-rig ~15, retarget ~3/clip × up to 10, plus a non-fatal RenderCloud poster). SpatialGen worlds are 10 credits each; Reality Flash reconstructions are 20. Scripted roster forges and e2e runs spend credits too — do not fire them casually.
 
@@ -198,10 +203,12 @@ Local OpenAPI / `llms.txt` copies may exist at `/workspace/openapi.json` and `/w
 - **React 19.3.0**
 - **React Three Fiber** `@react-three/fiber` 9.8.2, **drei** 10.7.9, **three** 0.187, `@react-three/postprocessing`, `three-stdlib`
 - **Zustand** 5.1.0 (fight HUD / phase store in `lib/game/store.ts`)
+- **Official Manycore SDKs:** `@manycore/aholo-sdk-asset` 1.3, `-world` 1.4, `-lux3d` 1.9, `-core` 1.3 (see §2)
 - **`@manycore/aholo-viewer` 1.14.0** (3DGS; vendored — see below)
 - **`sharp`** (poster JPEG, roster thumbs)
 - **`@vercel/functions`** (Runtime Cache for job state and generated files on Vercel)
 - **`@gltf-transform/*`** + `meshoptimizer` (shrink textures, strip retarget GLBs to skeleton + clip, weld/simplify)
+- Fonts (local, `app/fonts`): Space Grotesk (display), Inter (body), **Bungee** (arcade headings, `font-arcade` / `.arcade-title`, OFL)
 - `server-only` on Aholo / store modules so the key cannot leak into the client bundle
 
 There is **no database**. There is no paid Blob/Redis/Postgres store. Persistence is:
@@ -215,9 +222,9 @@ There is **no database**. There is no paid Blob/Redis/Postgres store. Persistenc
 
 | Path | Role |
 |---|---|
-| `/` (`app/page.tsx` → `components/landing/Landing.tsx`) | Landing: photo upload / camera (`capture=environment`), roster (click = P1, shift/right-click = CPU or P2), 1P/2P toggle, versus preview, arena picker, room scan |
+| `/` (`app/page.tsx` → `components/landing/Landing.tsx`) | Mobile-first arcade home (see "UI structure" below): forge panel, character select, stage select, sticky 1P/2P + FIGHT bar |
 | `/forge/[id]` | Live forge progress + "practice while you wait" sparring (`ForgeClient.tsx`) |
-| `/fight` | 1v1 fight (`FightClient.tsx`). Query: `p1`, `p2`, `arena` (default `stage`), `view=splat\|pano`, `mode=cpu\|2p\|practice`, `debug=1` (exposes `window.__sim`) |
+| `/fight` | 1v1 fight (`FightClient.tsx`). Phases: `loading → vs` (VS splash, skipped in practice) `→ intro → fight → ko → victory`. Query: `p1`, `p2`, `arena` (default `stage`), `view=splat\|pano`, `mode=cpu\|2p\|practice`, `debug=1` (exposes `window.__sim`) |
 | `/gallery` | Every forged fighter (photo → concept → poster, turntable, Fight). `?all=1` includes hidden test forges |
 | `POST /api/pipeline` | Start a forge (multipart: `photo`, `name`, optional `mascot`, `exportPrint`, `prompt`). `maxDuration = 300` |
 | `GET /api/pipeline` | `{ mode: "live"\|"mock", labels }` |
@@ -237,10 +244,11 @@ Hobby Vercel plans may cap `maxDuration` at 60s even when the route asks for 300
 
 | Path | What it does |
 |---|---|
-| `lib/aholo.ts` | Server-only Lux3D pipeline state machine, OUS upload, task helpers, mock mode, freestyle fallback, re-rig, job→fighter |
+| `lib/aholo-sdk.ts` | **The only Aholo transport**: SDK client factory, `call()` / `toAholoError()`, `uploadAsset`, `isMockMode` |
+| `lib/aholo.ts` | Server-only Lux3D pipeline state machine (via `lib/aholo-sdk.ts`), mock mode, freestyle fallback, re-rig, `jobServices`, job→fighter |
 | `lib/store.ts` | Job + fighter file I/O (local FS vs `/tmp` + Runtime Cache) |
 | `lib/forge-limit.ts` | Daily spend guard (Lagos calendar day; IPs hashed) |
-| `lib/world.ts` | SpatialGen + Reality jobs, queue guard, signed result URLs |
+| `lib/world.ts` | SpatialGen + Reality jobs via aholo-sdk-world, queue guard, signed result URLs, `isWorldStuck` (RUNNING at 0% for 90 min measured from when we first saw it RUNNING, stored in Runtime Cache `worldrun:<id>`) |
 | `lib/arenas.ts` / `lib/arenas-server.ts` | Arena types, builtins, shipped + app-created arena list, stuck detection |
 | `lib/fighters.ts` | `FighterDef`, starter roster IDs, gallery-only IDs, placeholder |
 | `lib/moves.ts` | Move set ↔ Lux3D preset IDs (max 10 per retarget task) |
@@ -251,8 +259,19 @@ Hobby Vercel plans may cap `maxDuration` at 60s even when the route asks for 300
 | `lib/game/ai.ts`, `input.ts`, `audio.ts`, `recorder.ts`, `store.ts` | CPU, keyboard/touch, WebAudio SFX/music, KO card + clip recorder, Zustand store |
 | `components/game/*` | `GameScene` (one R3F canvas, one `useFrame` loop), `Fighter`, `Effects`, `Hud`, `StudioEnv` |
 | `components/arena/*` | Neon ring / panorama / splat arenas; Aholo Viewer layer (separate canvas under transparent R3F — they cannot share a WebGL context or depth buffer, so fighters always draw on top of the splat) |
-| `components/landing/*` | Landing, arena picker, room scan, versus preview |
+| `components/landing/*` | `Landing` (+ `ForgePanel`, `CREDIT_LINE`), `SelectScreen`, `ArenaPicker`, `RoomScan`, `VersusPreview` (camera auto-fits phone aspect) |
+| `components/ui/PoweredBy.tsx` | "Powered by Aholo" service chips |
 | `scripts/*` | CLI for roster forges, worlds, room scans, posters, Playwright screens / e2e, LuxReal pack |
+
+### UI structure (redesign, commits `f3771aa`, `f3033ea`)
+
+Followed `/workspace/game-ui-skills/` (SpellfAIre game-ui-design, awesome-gamedev game-ui-ux, IKEMEN Forge screenpack select/VS/lifebar patterns). Mobile-first, tested at 390×844 and 1440×900.
+
+- **Home** (`Landing.tsx`): sticky header (arcade logo, Gallery), hero, **ForgePanel** (big photo tile, Snap / Upload, name, one big FORGE button, STL/3MF checkbox, live/mock dot, Powered-by strip), **SelectScreen**, **Stage select**, credit footer (`CREDIT_LINE` = "Built with Aholo Lux3D · SpatialGen · Viewer · Reality · RenderCloud · #Manycorehackathon"), and a fixed **fight bar** (1P vs CPU / 2 players + FIGHT!, safe-area padded).
+- **SelectScreen**: 3D versus stage (both picks idling via `VersusPreview`, name plates, VS) over a portrait grid (concept thumbs with CSS idle bob). **1P (orange) / CPU-or-P2 (blue) cursors**; tapping places the active side then hands over to the other side; tabs choose the side; shift-click / right-click = CPU; arrow keys move focus, Enter selects; picking the other side's fighter swaps. SFX on select.
+- **ArenaPicker**: swipeable (mobile) / grid (desktop) cards with **real previews**: `cover` comes from the SpatialGen/Reality panorama automatically for finished worlds; built-ins use in-game screenshots `public/arenas/thumbs/{stage,sample-bear}.jpg`. Queued worlds and the room-scan builder sit behind a **"Coming soon"** toggle. Home auto-selects the first finished SpatialGen/Reality arena.
+- **Fight HUD** (`components/game/Hud.tsx`): **VS splash** (`phase === "vs"`, 2.4 s, tap to skip; RenderCloud posters or concepts slam in; whoosh + new `vs` SFX), screenpack-style **lifebars** (portrait, slanted bar, white/red lagging damage layers, low-HP pulse, P1/CPU tag), boxed **round timer** (red pulse at 10 s or less), Round 1 / 3-2-1 / FIGHT!, hit/combo callouts, **screen shake** on heavy hits (Web Animations on `[data-game-root]` + `navigator.vibrate`), **K.O. / TIME! stamp** banner, victory panel with PERFECT, rematch/roster, KO card / clip / caption, bigger touch buttons. Hit sparks + camera shake (`Effects.tsx`) and WebAudio SFX were already there.
+- Forge page and gallery use the arcade logo/heading; gallery cards show the Powered-by strip.
 
 ### Forge pipeline (data flow)
 
@@ -292,13 +311,13 @@ Placeholder only if fewer than two real fighters exist: **robot** / Boltbox (Rob
 
 User forges live under `gen-*`. Pipeline test ids `gen-mwekglv2-db32ab` and `gen-mwel0i8j-076867` are gallery-only (`GALLERY_ONLY_IDS` in `lib/fighters.ts`). `test-*` is also hidden from the roster unless `?all=1`.
 
-**Mama** is a user-forged fighter on **production** (Runtime Cache / `/tmp`, not in this git tree). Lux3D refused her original rig (`RIG_ELIGIBILITY_FAILED`; likely size predicted ~30 cm when `aiPredictSize` was still on). She shipped as freestyle. A re-rig from her existing mesh (1.8 m) was in progress around this handoff — check production `POST /api/pipeline/<mama-id>/rerig` status and her `job.json` via the live forge URL or `/api/pipeline/<id>` before starting another paid attempt (`rerig` is one-shot per job).
+**Mama** (`gen-mwejr65q-c81d76`) is a user-forged fighter on **production** (Runtime Cache / `/tmp`, not in this git tree). Lux3D refused her original rig (`RIG_ELIGIBILITY_FAILED`; her mesh was 0.27 × 0.30 × 0.07 m because `aiPredictSize` sized her like a figurine). **Re-rig succeeded on 13 Nov 2026 (rig started ~07:52 WAT) on attempt 1** (1.8 m normalised copy of her existing mesh, no new mesh/concept): `rigged.glb` + 8 clips (idle, walk, punch, kick, block, hit, ko, victory) + a new posed RenderCloud poster; done ~08:03 WAT. Her one-shot `rerig` is used up (`rerig.attempt = 1`).
 
 ### Arenas & world jobs
 
-Built-in always-available arenas: **Neon Ring** (`stage`) and, as a 3DGS fallback when no generated splat is ready, the official Aholo Viewer **sample bear** `.sog`.
+Built-in always-available arenas: **Neon Ring** (`stage`) and, as a 3DGS fallback **only while no generated splat is ready**, the official Aholo Viewer **sample bear** `.sog` (it drops out of the list once a generated world is playable, which is the case now).
 
-Shipped-but-not-finished SpatialGen / Reality dirs under `public/arenas/` (prompts + `world-id.txt`, **no baked splat/pano in the recovered tree**):
+SpatialGen / Reality dirs under `public/arenas/` (prompts + `world-id.txt`; no baked splat/pano in git; finished worlds are served via signed-URL redirects):
 
 | Arena id | Name | Kind | World ids (oldest first) |
 |---|---|---|---|
@@ -307,9 +326,13 @@ Shipped-but-not-finished SpatialGen / Reality dirs under `public/arenas/` (promp
 | `rooftop-dojo` | Rooftop Dojo at Sunset | SpatialGen | `3FO4K4V8HCO8` |
 | `my-room` | My Room (scan) | Reality | `3FO4K4V8HJDA`, `3FO4K4V8IOHM` (resubmit) |
 
-`/api/arenas` lists live status. If any world id for a dir has `SUCCEEDED`, the arena becomes playable via a signed-URL redirect (no multi-MB rehost in serverless storage). Pending arenas are flagged; **RUNNING at 0% for >90 minutes** (`STUCK_MS`) is marked `stuck`. New SpatialGen / Reality creates are **refused while the account queue is non-empty** (`WORLD_QUEUE_BUSY`), unless `WORLD_QUEUE_GUARD=off`. Fights always have Neon Ring (and the sample splat if no other splat is ready).
+`/api/arenas` lists live status. If any world id for a dir has `SUCCEEDED`, the arena becomes playable via a signed-URL redirect (no multi-MB rehost in serverless storage). Pending arenas are flagged; **RUNNING at 0% for >90 minutes since first seen RUNNING** (`STUCK_MS`, `isWorldStuck`) is marked `stuck` (Aholo's `updateTime` is the submission time, so the old check flagged jobs as stuck the moment they started). New SpatialGen / Reality creates are **refused while the account queue is non-empty** (`WORLD_QUEUE_BUSY`), unless `WORLD_QUEUE_GUARD=off`. Fights always have Neon Ring (and the sample splat if no other splat is ready).
 
 The account can run **one world job at a time**. **There is no cancel endpoint.** A stuck RUNNING job blocks everything behind it.
+
+**Aholo Viewer + same-origin URLs:** the viewer parses splats in a worker, which cannot resolve relative URLs. `AholoSplatLayer` passes `new URL(url, location.href)` (fixed in `31af7df`; before that every `/api/assets/arenas/...` splat failed with "Failed to parse URL"). `/api/assets/arenas/<id>/world.spz` and `pano.jpg` 302 to a freshly signed `holo-cos.aholo3d.cn` URL (CORS OK).
+
+**Known visual issue:** Kitchen Colosseum's splat placement is not tuned (`origin`/`scale`/`yaw` defaults), so the camera sits close to the splat surface and the backdrop looks blurry. Tune per-arena placement in `lib/arenas-server.ts` (or default that arena to `view=pano`).
 
 ### Fight engine
 
@@ -337,7 +360,7 @@ If `AHOLO_API_KEY` is unset, **every** pipeline (fighters, worlds, room scans) r
 
 **Lux3D tasks** are async. Poll `GET /global/lux3d/v1/generate/task/get?taskid=`. Status: **0 init, 1 running, 3 success, 4 failed, 6 canceled**. Result URLs expire in **~2 hours**. `img-to-3d` versions are `G1` or `G1-Turbo`; `faceCount` 10_000–300_000; `outputFormat` zip/glb/ply. `customSize` is millimetres and takes priority over `aiPredictSize`.
 
-Endpoints this repo uses (SDK equivalents in parentheses — prefer those once the migration lands):
+REST routes behind the SDK calls (useful for error codes and for the scripts, which still use raw REST). The app itself calls these only through the SDKs (§2):
 
 | Action | REST |
 |---|---|
@@ -366,6 +389,7 @@ Lux3D JSON envelopes look like `{ c, m, d }` with `c === "0"` for OK. World/asse
 - **Client polling must self-reschedule.** Do not key the next poll only on a React `job` state update. A dropped request or a backgrounded mobile tab used to freeze the forge on "Failed to fetch (retrying…)" even though Aholo was fine, because the next stage only starts when this app polls.
 - **Vercel FS is read-only except `/tmp`.** Never write generated fighters into `public/` on Vercel and expect it to stick. Use `lib/store.ts`.
 - Aholo Viewer **cannot be mounted inside an R3F canvas** (own WebGL engine, no three.js). Two stacked canvases; no shared depth buffer.
+- The SDKs throw `BusinessError` for `{c != "0"}` envelopes and plain `Error` for request timeouts; always go through `call()` so the transient/retry logic sees a status.
 - Retarget `separate` clips are named `animation_N`, not the preset id — map via `actions[].animation_id` ↔ URL.
 - Rig output is a Mixamo-named 52-joint skeleton (`mixamorig:Hips` …).
 - OUS multipart: at most 2 concurrent parts per file; identical MD5 may be deduplicated (no parts to upload).
@@ -447,31 +471,29 @@ The app originally lived only on Vercel. Source was recovered from a production 
 
 ---
 
-## 9. Current status & known issues (13 Nov 2026, WAT)
+## 9. Current status & known issues (13 Nov 2026, ~08:25 WAT)
 
-**Working on production** (https://anything-fighter.vercel.app), with recent reliability work pushed to `master`:
+**Production:** https://anything-fighter.vercel.app → deployment **`dpl_5zUXe85v37fNY2g3rg1yGvY4tVo3`** (commit `31af7df`: UI redesign + viewer fix). Earlier today: `dpl_FsPMx6FaR71B4q1Veyu8vBxPzvpm` (SDK migration, `1c425bf`), `dpl_EeLbHb9dMiKqMegQNLRU3NW3Xssg` (freestyle animation + rerig, `15a8184`).
 
-- Live forge path is end-to-end: photo → concept → mesh → rig (or freestyle) → retarget → RenderCloud poster.
-- Forge "Failed to fetch (retrying…)" at the concept step was a **client polling bug**, not an Aholo outage. Fixed (`6a13b4d`).
-- Rig path requests 1.8 m characters and rescues / falls back to freestyle (`04babd7`, `15a8184`).
-- Freestyle motion is no longer a stiff statue (`15a8184`).
-- Arenas tolerate a stuck world queue (`6b929db`).
-- Two test forges on prod completed; the duck is fully rigged. Exact remaining credit balance should be read from the dashboard.
+- Live forge path is end-to-end on the **official SDKs**: verified with forge **`gen-mwemw090-24ff0e` ("SDK Test")**, started 08:07 WAT with `mascot=0` (a humanoid concept image as input): aholo-sdk-asset upload, img-to-3d, auto-rig, 8-clip retarget, RenderCloud poster, done 08:20 WAT, fully rigged, `services = [asset, mesh, rig, retarget, poster]`. It is in `GALLERY_ONLY_IDS` (hidden from the roster).
+- World reads (`list`, `retrieve`) on aholo-sdk-world verified live via `/api/arenas`.
+- Forge "Failed to fetch (retrying…)" was a client polling bug (fixed `6a13b4d`).
+- Rig path requests 1.8 m characters, rescues, or falls back to freestyle (`04babd7`, `15a8184`); freestyle fighters are animated procedurally (`15a8184`).
+- **Mama is now fully rigged** (see §5).
+- Not yet tested live through the SDK: `multiFormatExport` (STL/3MF checkbox) and `generations.create` / `reconstructions.create` (the queue guard refuses new world jobs while the queue is busy).
 
-**Stuck SpatialGen / Reality queue (Aholo-side, cannot be cleared from the API):**
+**World queue (Aholo-side; no cancel API):**
 
-| World id | Intended arena | Notes |
+| World id | Arena | State at ~08:23 WAT |
 |---|---|---|
-| **`3FO4K4V8HG19`** | Kitchen Colosseum | **Stuck RUNNING at 0%** since **13 Nov 2026, 00:45 WAT**. This is the head of the queue. |
-| `3FO4K4V8HJDA` | My Room | Waiting behind it |
-| `3FO4K4V8H9C7` | Toy Shop at Midnight | Waiting |
-| `3FO4K4V8HCO8` | Rooftop Dojo at Sunset | Waiting |
-| `3FO4K4V8IL5L` | Kitchen Colosseum (duplicate resubmit) | Waiting — ask support to cancel this too |
-| `3FO4K4V8IOHM` | My Room (duplicate resubmit) | Waiting — ask support to cancel this too |
+| `3FO4K4V8HG19` | Kitchen Colosseum | **SUCCEEDED** (Aholo email 08:09 WAT). Playable on prod; the splat loads in the Aholo Viewer after the `31af7df` fix (signed SPZ ~5.5 MB, HTTP 200); the pano is its stage-select cover. Placement needs tuning (see §5). |
+| `3FO4K4V8HJDA` | My Room (Reality scan) | **SUCCEEDED** (~08:20 WAT). Listed as playable on prod; not yet checked in a fight. |
+| `3FO4K4V8H9C7` | Toy Shop at Midnight | RUNNING, 0% (just started) |
+| `3FO4K4V8HCO8` | Rooftop Dojo at Sunset | PENDING |
+| `3FO4K4V8IL5L` | Kitchen Colosseum duplicate resubmit | PENDING. Will burn queue time and ~10 credits for a world we already have; only Aholo support can cancel it |
+| `3FO4K4V8IOHM` | My Room duplicate resubmit | PENDING. Same (~20 credits) |
 
-Only **Aholo support** can cancel or unstick these. Worth asking them to cancel `3FO4K4V8HG19` and the two duplicate resubmits. Until then: do **not** submit more world jobs (the app already refuses); fight on Neon Ring / sample splat; finished worlds will appear automatically if any of the waiting jobs eventually succeed. Appeals / support contact published in the rules: feedback@official.aholo3d.com (also the hackathon Discord).
-
-**Mama** is on the live roster as a **freestyle** (unrigged) fighter. Re-rig from her existing 1.8 m-normalised mesh was started; confirm whether that job finished, failed back to freestyle, or is still in `rig` before calling `/rerig` again (one-shot). If Lux3D still refuses, keep the improved procedural moves rather than spending a full new forge unless the owner wants a new photo.
+The app still refuses new world jobs while the queue is non-empty (`WORLD_QUEUE_BUSY`). Support contact: feedback@official.aholo3d.com (or the hackathon Discord). Finished worlds show up automatically as playable stage cards.
 
 **Missing from the recovered source** (`.vercelignore` / `.gitignore` — never deployed, not in git):
 
@@ -490,7 +512,7 @@ Also gitignored and therefore not in the repo: `public/vendor/` (rebuilt by `npm
 
 **Storage caveat:** user-forged fighters on Vercel live in ephemeral Runtime Cache. They can vanish. For a durable demo roster, bake finished fighters into `public/fighters/<id>/` and commit the *optimised* assets (not `*.orig.glb`), or accept that only the starter five are guaranteed.
 
-**UI:** the landing/roster still reads more like a tool dashboard than a fighting game, and is weak on mobile. A redesign is the next product work (see §10). Fun is 25% of expert judging.
+**UI:** redesigned (see §5 "UI structure"). Remaining polish ideas: tune Kitchen Colosseum / My Room splat placement, gamepad support, best-of-3 rounds with win icons.
 
 ---
 
@@ -498,24 +520,15 @@ Also gitignored and therefore not in the repo: `public/vendor/` (rebuilt by `npm
 
 Do these in roughly this order unless the owner directs otherwise.
 
-1. **Finish Mama's re-rig** (or confirm failure and leave the improved freestyle animation in place). Do not burn a second full forge without asking.
-2. **Fighting-game UI redesign** (owner approved, after looking at game-UI skills). Mobile-first:
-   - Character-select grid with idle previews and a glowing P1 / CPU cursor
-   - VS splash before each round
-   - Arena cards with real preview images
-   - Hide unavailable / stuck arenas behind a "coming soon" (or similar) instead of a clutter of greyed-out queue rows
-   - Punchier fight HUD: lifebars, hit FX, screen shake, typography, sound
-   - Follow these skills (they live on the recovery box under `/workspace/game-ui-skills/` as well):
-     - [SpellfAIre `game-ui-design`](https://github.com/clydefrog1/SpellfAIre/blob/main/.agents/skills/game-ui-design/SKILL.md) — HUD readability, motion, mobile scaling
-     - [awesome-gamedev `game-ui-ux`](https://github.com/gamedev-skills/awesome-gamedev-agent-skills/blob/main/skills/disciplines/game-ui-ux/SKILL.md) — responsive layout, safe areas, menu flow
-     - [IKEMEN Forge](https://github.com/nategarelik/ikemen-forge) — select screen, VS splash, lifebars / screenpack patterns
-3. **Continue the official SDK migration** (§2) without breaking the poll machine or mock mode.
+1. ~~Mama re-rig~~ done. ~~Fighting-game UI redesign~~ done. ~~Official SDK migration~~ done (app code; CLI scripts still raw REST).
+2. **Tune splat placement** for Kitchen Colosseum and My Room (`origin` / `scale` / `yaw` / `upAxis` per arena) so the backdrop reads well behind the fighters; screenshot both at 390 px and desktop.
+3. Optionally migrate `scripts/*.mjs` to the SDKs; optionally try `lux3d.imageToFourView` then multi-view `imgTo3d` (G1) for better meshes (extra credits; test once).
 4. **Project report** (PDF or PPT) covering concept, development, asset iterations, and results — required for submission.
 5. **Demo video** of the real app running (voiceover/subtitles OK).
 6. **Fill the official submission form as a draft** (demo link, report, track = Gaming, devices = None, source repo, etc.). **Do not submit without the owner's explicit OK.**
 7. **Draft an X post** with `#Manycorehackathon` for the owner to post. Do not post it yourself.
 8. **LuxReal KO replays / trailer:** LuxReal has **no public video API**. An invitation / Lux3D-related key from Manycore is required for deeper integration. The survey is already in; credits may take 1–2 days. Meanwhile `scripts/luxreal-pack.mjs` can assemble posed GLBs + posters + panos for manual upload at the LuxReal web app when those files exist. LuxReal ID for this account: `3FO4FONYS18J`.
-9. If support clears the world queue, bake finished Kitchen / Toy Shop / Rooftop / My Room splats (or rely on signed-URL redirects) so the demo has real arenas.
+9. Ask Aholo support to cancel the duplicate world jobs `3FO4K4V8IL5L` and `3FO4K4V8IOHM` (owner decides; do not contact them without approval).
 
 ### Commit history (high level, `master`)
 
@@ -530,6 +543,11 @@ Do these in roughly this order unless the owner directs otherwise.
 | `6669da8` | Expiring advance locks; 100s download timeout as transient; re-collect clips before finish |
 | `da3320b` | README reliability notes |
 | `15a8184` | Freestyle motion (breathing, squash-and-stretch, etc.) + one-shot `POST /api/pipeline/<id>/rerig` |
+| `5bb99ea` | HANDOFF.md |
+| `1c425bf` | All Aholo calls on the official Manycore TypeScript SDKs (`lib/aholo-sdk.ts`); Powered-by strip; README SDK section |
+| `f3771aa` | Fighting-game UI redesign (home, character select, stage select, VS splash, HUD) |
+| `f3033ea` | Arcade logo/heading on forge + gallery |
+| `31af7df` | Aholo Viewer absolute splat URL fix; stuck = time since first seen RUNNING |
 
 Later commits may exist — run `git log` before you start.
 
@@ -539,6 +557,7 @@ Later commits may exist — run `git log` before you start.
 
 - Work in this repo; keep changes reviewable; do not rewrite working pipeline code without cause.
 - Another agent may be editing at the same time: touch only the files your task needs; never `git add -A`.
+- **Keep this file current with every change** (owner request, 13 Nov 2026): update the relevant section, §9 status (including the prod deployment id) and the commit table in the same commit or the next one.
 - Spend Aholo credits sparingly; check the dashboard; respect the spend guard.
 - Do not add production credentials to the client, the repo, or the submission packet.
 - Do not submit the hackathon form, publish the X post, or send mail as the owner unless they clearly asked for that exact action.
