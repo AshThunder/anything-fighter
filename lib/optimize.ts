@@ -36,3 +36,10 @@ export async function stripToAnimation(src: string, dst: string, clipName?: stri
   await doc.transform(prune({ keepLeaves: true }));
   await io().write(dst, doc);
 }
+
+/** Downsize textures but keep their original format (for uploads to Aholo services that may not take WebP). */
+export async function shrinkTextures(src: string, dst: string, maxTex = 1024) {
+  const doc = await io().read(src);
+  await doc.transform(dedup(), textureCompress({ encoder: sharp, resize: [maxTex, maxTex] }), prune());
+  await io().write(dst, doc);
+}

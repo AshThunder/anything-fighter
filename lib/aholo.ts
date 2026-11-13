@@ -4,7 +4,9 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { LUX3D_ANIMATION_MAP, LUX3D_RETARGET_IDS, MOVES, type Move } from "./moves";
 import { STARTER_ROSTER_IDS, type FighterDef } from "./fighters";
-import { optimizeFighterGlb, stripToAnimation } from "./optimize";
+import { optimizeFighterGlb, shrinkTextures, stripToAnimation } from "./optimize";
+import { bakePose } from "./pose";
+import { ingestCreate, ingestGet, renderPoll, renderSubmit } from "./poster";
 import {
   addGeneratedId,
   fighterDir,
@@ -204,7 +206,7 @@ const TASK_FAILED = new Set([4, 6]);
 
 // ───────────────────────────── job state machine ─────────────────────────────
 
-export const STAGES = ["upload", "mascot", "mesh", "rig", "retarget", "export", "done"] as const;
+export const STAGES = ["upload", "mascot", "mesh", "rig", "retarget", "poster", "export", "done"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export const STAGE_LABEL: Record<Stage, string> = {
@@ -213,6 +215,7 @@ export const STAGE_LABEL: Record<Stage, string> = {
   mesh: "Lux3D: image → 3D mesh + PBR",
   rig: "Lux3D: humanoid auto-rig",
   retarget: "Lux3D: retargeting fight moves",
+  poster: "RenderCloud: KO poster",
   export: "Lux3D: printable export (STL/3MF/USDZ)",
   done: "Ready to fight",
 };
@@ -233,9 +236,11 @@ export interface Job {
   /** Remote (Aholo, expiring) URLs. */
   remote: { photo?: string; mascot?: string; mesh?: string; rigged?: string };
   /** Rehosted local files (relative to fighter dir). */
-  files: { photo?: string; mascot?: string; mesh?: string; rigged?: string; statue?: string; anims: Partial<Record<Move, string>>; exports: Record<string, string> };
+  files: { photo?: string; mascot?: string; mesh?: string; rigged?: string; statue?: string; posed?: string; poster?: string; anims: Partial<Record<Move, string>>; exports: Record<string, string> };
   /** Lux3D auto-rig refused the mesh (RIG_ELIGIBILITY_FAILED): the fighter uses the unrigged mesh + procedural moves. */
   rigless?: boolean;
+  /** RenderCloud poster sub-state: mesh ingest task id, then render operation id. */
+  poster?: { phase: "ingest" | "render"; id: string; fails?: number };
   /** Retarget actions still to download + strip (processed one per poll so a 60s Hobby function can finish). */
   pendingAnims?: { move: Move; url: string }[];
   log: string[];
@@ -415,6 +420,22 @@ async function startStage(job: Job, stage: Stage) {
       });
       return enter(job, "retarget", t);
     }
+    case "poster": {
+      if (job.mode !== "live" || !job.files.posed || process.env.POSTER_STAGE === "off") return startStage(job, "export");
+      try {
+        const buf = await readFighterFile(job.id, job.files.posed);
+        if (!buf) throw new Error("posed mesh missing");
+        const url = await uploadAsset(buf, "posed.glb");
+        const id = await ingestCreate(url);
+        enter(job, "poster");
+        job.poster = { phase: "ingest", id };
+        job.log.push(`[poster] RenderCloud ingest task ${id}`);
+        return;
+      } catch (e) {
+        job.log.push(`[poster] skipped: ${e instanceof Error ? e.message : e}`);
+        return startStage(job, "export");
+      }
+    }
     case "export": {
       if (!job.options.exportPrint) return finish(job);
       const t = await lux3d.multiFormatExport({ modelUrl: job.remote.mesh!, outputFormat: ["stl", "3mf", "usdz"] });
@@ -436,6 +457,7 @@ async function advanceLive(job: Job) {
   if (job.stage === "retarget" && (job.pendingAnims?.length ?? 0) > 0) {
     return processPendingAnims(job);
   }
+  if (job.stage === "poster") return advancePoster(job);
   if (!job.taskId) throw new AholoError(`No task for stage ${job.stage}`);
   const t = await lux3d.getTask(job.taskId);
   if (TASK_FAILED.has(t.status)) {
@@ -505,12 +527,13 @@ async function processPendingAnims(job: Job) {
   const next = job.pendingAnims?.[0];
   if (!next) {
     job.pendingAnims = undefined;
-    return startStage(job, "export");
+    return startStage(job, "poster");
   }
   const rawPath = await downloadToTmp(job.id, next.url, `anim-${next.move}.orig.glb`);
   const outName = `anim-${next.move}.glb`;
   const outPath = path.join(fighterDir(job.id), outName);
   await fs.mkdir(fighterDir(job.id), { recursive: true });
+  if (!job.files.posed && (next.move === POSTER_MOVE || job.pendingAnims!.length === 1)) await bakePosed(job, rawPath);
   await stripToAnimation(rawPath, outPath, next.move);
   await writeFighterFile(job.id, outName, await fs.readFile(outPath));
   await fs.unlink(rawPath).catch(() => {});
@@ -520,6 +543,63 @@ async function processPendingAnims(job: Job) {
   job.log.push(`[retarget] ${next.move} ready` + (left ? `, ${left} left` : ", all clips ready"));
   if (!left) {
     job.pendingAnims = undefined;
+    return startStage(job, "poster");
+  }
+}
+
+/** Poster pose: mid-jab frame of the retargeted punch clip. */
+const POSTER_MOVE: Move = "punch";
+const POSTER_TIMEOUT_MS = 8 * 60 * 1000;
+
+/** Bake a static, unskinned 1.8 m pose for RenderCloud (its mesh ingest has no skinning). Never throws. */
+async function bakePosed(job: Job, srcGlb: string) {
+  try {
+    const baked = path.join("/tmp", `af-${job.id}-posed.raw.glb`);
+    const out = path.join("/tmp", `af-${job.id}-posed.glb`);
+    await bakePose(srcGlb, baked, 0.5, 1.8);
+    await shrinkTextures(baked, out, 1024);
+    await writeFighterFile(job.id, "posed.glb", await fs.readFile(out));
+    await Promise.all([fs.unlink(baked), fs.unlink(out)].map((p) => p.catch(() => {})));
+    job.files.posed = "posed.glb";
+  } catch (e) {
+    job.log.push(`[poster] pose bake failed: ${e instanceof Error ? e.message : e}`);
+  }
+}
+
+/** RenderCloud poster: ingest → render → download. Optional: any failure skips straight to export/finish. */
+async function advancePoster(job: Job) {
+  const p = job.poster;
+  try {
+    if (!p) throw new Error("no poster task");
+    if (Date.now() - job.stageStartedAt > POSTER_TIMEOUT_MS) throw new Error("timed out");
+    if (p.phase === "ingest") {
+      const meshId = await ingestGet(p.id);
+      if (!meshId) return;
+      const op = await renderSubmit(meshId, job.id);
+      job.poster = { phase: "render", id: op };
+      job.log.push(`[poster] mesh ${meshId} ingested, render ${op}`);
+      return;
+    }
+    const url = await renderPoll(p.id);
+    if (!url) return;
+    const png = await fetchToBuffer(url, "poster.png");
+    const sharp = (await import("sharp")).default;
+    const jpg = await sharp(png).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+    await writeFighterFile(job.id, "poster.jpg", Buffer.from(jpg));
+    job.files.poster = "poster.jpg";
+    job.poster = undefined;
+    job.log.push("[poster] RenderCloud poster ready");
+    return startStage(job, "export");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const transient = e instanceof AholoError && (e.status === 429 || (e.status ?? 0) >= 500);
+    if (p && transient && (p.fails ?? 0) < 3) {
+      p.fails = (p.fails ?? 0) + 1;
+      job.log.push(`[poster] transient error ${p.fails}/3: ${msg}`);
+      return;
+    }
+    job.log.push(`[poster] skipped: ${msg}`);
+    job.poster = undefined;
     return startStage(job, "export");
   }
 }
@@ -545,17 +625,19 @@ async function finishRigless(job: Job, reason: string) {
   await fs.writeFile(inPath, raw);
   await optimizeFighterGlb(inPath, outPath);
   await writeFighterFile(job.id, "statue.glb", await fs.readFile(outPath));
-  await fs.unlink(inPath).catch(() => {});
   job.files.statue = "statue.glb";
   job.error = undefined;
   job.transient = 0;
   job.log.push(`[rig] Lux3D rig refused this shape (${reason.slice(0, 120)}), fighting freestyle with the unrigged mesh`);
-  await finish(job);
+  await bakePosed(job, inPath);
+  await fs.unlink(inPath).catch(() => {});
+  if (job.files.posed) await startStage(job, "poster");
+  else await finish(job);
 }
 
 async function advanceMock(job: Job) {
   if (Date.now() - job.stageStartedAt < MOCK_STAGE_MS) return;
-  const order: Stage[] = ["upload", "mascot", "mesh", "rig", "retarget", "export", "done"];
+  const order: Stage[] = ["upload", "mascot", "mesh", "rig", "retarget", "poster", "export", "done"];
   const next = order[order.indexOf(job.stage) + 1];
   if (job.stage === "rig") {
     // pretend the rig came back: reuse the placeholder robot (has real clips)
@@ -594,6 +676,7 @@ export function jobToFighter(job: Job): FighterDef {
     exports: Object.keys(exports).length ? exports : undefined,
     thumbUrl: job.files.mascot ? assetUrl(id, job.files.mascot) : job.files.photo ? assetUrl(id, job.files.photo) : undefined,
     photoUrl: job.files.photo ? assetUrl(id, job.files.photo) : undefined,
+    posterUrl: job.files.poster ? assetUrl(id, job.files.poster) : undefined,
     color: COLORS[parseInt(id.slice(-2), 16) % COLORS.length],
     source: job.mode === "mock" ? "mock" : "lux3d",
     createdAt: job.createdAt,

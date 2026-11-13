@@ -14,13 +14,14 @@ import { BUILTIN_ARENAS } from "@/lib/arenas";
 
 const GameScene = dynamic(() => import("@/components/game/GameScene"), { ssr: false });
 
-type Stage = "upload" | "mascot" | "mesh" | "rig" | "retarget" | "export" | "done";
+type Stage = "upload" | "mascot" | "mesh" | "rig" | "retarget" | "poster" | "export" | "done";
 const STAGES: { key: Stage; label: string; tool: string; eta: number }[] = [
   { key: "upload", label: "Photo upload", tool: "Aholo Asset (OUS)", eta: 5 },
   { key: "mascot", label: "Fighter concept", tool: "Lux3D multimodal image", eta: 40 },
   { key: "mesh", label: "3D mesh + PBR", tool: "Lux3D image→3D Turbo", eta: 65 },
   { key: "rig", label: "Skeleton", tool: "Lux3D humanoid auto-rig", eta: 80 },
   { key: "retarget", label: "10 fight moves", tool: "Lux3D animation retarget", eta: 35 },
+  { key: "poster", label: "KO poster", tool: "Aholo RenderCloud", eta: 45 },
   { key: "export", label: "Print files", tool: "Lux3D STL/3MF/USDZ", eta: 30 },
 ];
 const TIPS = [
@@ -29,6 +30,7 @@ const TIPS = [
   "Chain hits within ~1 s for a combo counter.",
   "Your object is being re-imagined as a humanoid so it can be rigged.",
   "Lux3D retargets 10 Mixamo-style moves onto your fighter's new skeleton.",
+  "RenderCloud path-traces a KO poster of your fighter mid-punch.",
 ];
 
 interface JobView {

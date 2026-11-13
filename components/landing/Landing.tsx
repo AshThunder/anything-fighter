@@ -10,13 +10,14 @@ import { RoomScan } from "./RoomScan";
 
 const VersusPreview = dynamic(() => import("./VersusPreview"), { ssr: false });
 
-type Stage = "upload" | "mascot" | "mesh" | "rig" | "retarget" | "export" | "done";
+type Stage = "upload" | "mascot" | "mesh" | "rig" | "retarget" | "poster" | "export" | "done";
 const STAGES: { key: Stage; label: string; tool: string }[] = [
   { key: "upload", label: "Photo", tool: "Aholo Asset upload" },
   { key: "mascot", label: "Fighter concept", tool: "Lux3D multimodal image" },
   { key: "mesh", label: "3D mesh + PBR", tool: "Lux3D image→3D" },
   { key: "rig", label: "Skeleton", tool: "Lux3D auto-rig" },
   { key: "retarget", label: "Fight moves", tool: "Lux3D retarget ×10" },
+  { key: "poster", label: "KO poster", tool: "Aholo RenderCloud" },
   { key: "export", label: "Print files", tool: "Lux3D STL/3MF/USDZ" },
 ];
 
