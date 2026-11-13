@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { LUX3D_ANIMATION_MAP, LUX3D_RETARGET_IDS, MOVES, type Move } from "./moves";
 import { STARTER_ROSTER_IDS, type FighterDef } from "./fighters";
-import { optimizeFighterGlb, shrinkTextures, stripToAnimation } from "./optimize";
+import { optimizeFighterGlb, shrinkTextures, stripToAnimation, weldSimplify } from "./optimize";
 import { bakePose } from "./pose";
 import { ingestCreate, ingestGet, renderPoll, renderSubmit } from "./poster";
 import {
@@ -243,6 +243,8 @@ export interface Job {
   rigless?: boolean;
   /** One automatic re-rig attempt on a 1.8 m normalised copy of the mesh after RIG_ELIGIBILITY_FAILED. */
   rigRescue?: boolean;
+  /** Re-rig of a finished freestyle fighter (existing mesh only): attempt 1 = 1.8 m normalised, 2 = + weld/simplify. */
+  rerig?: { attempt: number };
   /** RenderCloud poster sub-state: mesh ingest task id, then render operation id. */
   poster?: { phase: "ingest" | "render"; id: string; fails?: number };
   /** Retarget actions still to download + strip (processed one per poll so a 60s Hobby function can finish). */
@@ -342,6 +344,27 @@ export async function advanceJob(id: string): Promise<Job> {
     job.transient = 0;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    if (job.rerig && job.stage === "rig" && RIG_INELIGIBLE.test(msg)) {
+      // Re-rig of an existing freestyle fighter: one more variant, then back to freestyle (no new poster/mesh credits).
+      try {
+        if (job.rerig.attempt < 2) {
+          job.log.push(`[rerig] attempt ${job.rerig.attempt} refused (${msg.slice(0, 100)})`);
+          await startRerig(job, 2);
+        } else {
+          job.log.push(`[rerig] attempt 2 refused too (${msg.slice(0, 100)}); staying freestyle`);
+          job.rigless = true;
+          job.error = undefined;
+          await finish(job);
+        }
+        return job;
+      } catch (e2) {
+        job.log.push(`[rerig] failed: ${e2 instanceof Error ? e2.message : e2}; staying freestyle`);
+        job.rigless = true;
+        job.error = undefined;
+        await finish(job);
+        return job;
+      }
+    }
     if (canRiglessFallback(job, msg) && !job.rigRescue) {
       try {
         await rescueRig(job, msg);
@@ -627,6 +650,52 @@ async function advancePoster(job: Job) {
 }
 
 const RIG_INELIGIBLE = /RIG_ELIGIBILITY|eligibility/i;
+
+/**
+ * Give a finished freestyle fighter another shot at a real skeleton, reusing its existing Lux3D mesh (no new
+ * concept/mesh credits): rig a 1.8 m normalised copy; if refused, a welded + simplified copy; else stay freestyle.
+ * Allowed once per job.
+ */
+export async function rerigFreestyle(id: string): Promise<Job> {
+  const job = await loadJob(id);
+  if (!job) throw new AholoError("Job not found", "NOT_FOUND", 404);
+  if (job.mode !== "live" || job.stage !== "done" || !job.rigless || !job.files.mesh) throw new AholoError("Only finished freestyle fighters can be re-rigged", "NOT_FREESTYLE", 409);
+  if (job.rerig) throw new AholoError("This fighter was already re-rigged once", "RERIG_DONE", 409);
+  if (locks.has(id)) throw new AholoError("Busy, try again shortly", "BUSY", 409);
+  locks.add(id);
+  try {
+    job.rerig = { attempt: 1 };
+    job.rigless = undefined;
+    job.rigRescue = true;
+    await startRerig(job, 1);
+  } catch (e) {
+    job.rigless = true;
+    job.stage = "done";
+    job.log.push(`[rerig] could not start: ${e instanceof Error ? e.message : e}`);
+  } finally {
+    await saveJob(job);
+    locks.delete(id);
+  }
+  return job;
+}
+
+async function startRerig(job: Job, attempt: 1 | 2) {
+  const raw = await readFighterFile(job.id, job.files.mesh!);
+  if (!raw) throw new AholoError("Mesh missing from job store");
+  const base = path.join("/tmp", `af-${job.id}-rerig${attempt}`);
+  await fs.writeFile(`${base}.in.glb`, raw);
+  await bakePose(`${base}.in.glb`, `${base}.norm.glb`, 0.5, 1.8);
+  if (attempt === 2) await weldSimplify(`${base}.norm.glb`, `${base}.norm.glb`, 0.5);
+  await shrinkTextures(`${base}.norm.glb`, `${base}.glb`, 1024);
+  const url = await uploadAsset(await fs.readFile(`${base}.glb`), `mesh-rerig${attempt}.glb`);
+  await Promise.all(["in", "norm", ""].map((x) => fs.unlink(`${base}${x ? "." + x : ""}.glb`).catch(() => {})));
+  const t = await lux3d.autoRig({ modelUrl: url });
+  job.rerig = { attempt };
+  job.error = undefined;
+  job.transient = 0;
+  job.log.push(`[rerig] attempt ${attempt}: ${attempt === 1 ? "1.8 m normalised mesh" : "1.8 m + welded/simplified mesh"}`);
+  enter(job, "rig", t);
+}
 
 /** Re-rig once: normalise the Lux3D mesh to a 1.8 m, feet-on-floor, centred character, re-upload, rig again. */
 async function rescueRig(job: Job, reason: string) {
