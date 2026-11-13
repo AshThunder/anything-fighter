@@ -110,6 +110,31 @@ export interface WorldDetail {
 
 const memo = new Map<string, { at: number; v: Promise<WorldDetail | null> }>();
 
+/**
+ * When we first saw a world RUNNING. Aholo's updateTime/createTime are the submission time, so a job that has
+ * only just left the queue would otherwise look "stuck" immediately. Stored in Runtime Cache (+ per instance).
+ */
+const runSeen = new Map<string, number>();
+async function runningSince(worldId: string): Promise<number> {
+  const hit = runSeen.get(worldId);
+  if (hit) return hit;
+  const key = `worldrun:${worldId}`;
+  const c = await getRuntimeCache();
+  let t = c ? Number(await c.get(key).catch(() => 0)) || 0 : 0;
+  if (!t) {
+    t = Date.now();
+    await c?.set(key, String(t), { ttl: JOB_TTL, name: key }).catch(() => {});
+  }
+  runSeen.set(worldId, t);
+  return t;
+}
+
+/** RUNNING with 0% progress for STUCK_MS since we first saw it running. */
+export async function isWorldStuck(d: WorldDetail | null | undefined, worldId = d?.worldId): Promise<boolean> {
+  if (!d || !worldId || d.status !== "RUNNING" || (d.progress ?? 0) > 0) return false;
+  return Date.now() - (await runningSince(worldId)) > STUCK_MS;
+}
+
 /** GET /global/world/v1/{id}, cached ~45 s per instance. Never throws (null = unknown). */
 export function worldDetail(worldId: string, opts: { fresh?: boolean } = {}): Promise<WorldDetail | null> {
   if (isMockMode() || !/^[A-Za-z0-9]+$/.test(worldId)) return Promise.resolve(null);

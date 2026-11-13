@@ -69,7 +69,7 @@ export function AholoSplatLayer({
       const type =
         ext === "ply" ? A.SplatLoader.SplatFileType.PLY : ext === "spz" ? A.SplatLoader.SplatFileType.SPZ : A.SplatLoader.SplatFileType.SOG;
       try {
-        const data = await A.SplatLoader.parseSplatData(type, url, A.SplatLoader.SplatPackType.Compressed);
+        const data = await A.SplatLoader.parseSplatData(type, new URL(url, window.location.href).href, A.SplatLoader.SplatPackType.Compressed);
         const splat = await A.SplatUtils.createSplat(data);
         if (disposed) return;
         viewer.getScene().add(splat);
