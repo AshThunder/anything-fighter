@@ -69,6 +69,9 @@ body {
   .btn-outline:hover:not(:disabled) { background: var(--color-panel); }
   .btn-outline:active:not(:disabled) { box-shadow: 0 2px 0 #000; }
   .btn-outline-volt { background: transparent; border-color: var(--color-volt); color: var(--color-volt); }
+  .btn-gold { background: var(--color-gold); border-color: var(--color-gold); color: var(--color-ink); box-shadow: 0 4px 0 #c9a012; font-weight: 800; }
+  .btn-gold:hover:not(:disabled) { background: #ffe16a; border-color: #ffe16a; }
+  .btn-gold:active:not(:disabled) { box-shadow: 0 2px 0 #c9a012; }
   .btn-outline-volt:hover:not(:disabled) { background: rgb(34 199 255 / 0.12); }
   .btn-sm { min-height: 2.75rem; padding: 0 0.75rem; font-size: 0.8125rem; }
   .btn-lg { min-height: 3.5rem; padding: 0 1.5rem; font-family: var(--font-arcade); font-weight: 400; font-size: 1.25rem; letter-spacing: 0.02em; }

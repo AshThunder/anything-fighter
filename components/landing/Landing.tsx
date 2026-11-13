@@ -6,7 +6,7 @@ import { PLACEHOLDER_FIGHTERS, type FighterDef } from "@/lib/fighters";
 import { BUILTIN_ARENAS, type ArenaDef } from "@/lib/arenas";
 import { sfx, unlockAudio } from "@/lib/game/audio";
 import { PoweredBy } from "@/components/ui/PoweredBy";
-import { SiteHeader } from "@/components/ui/SiteHeader";
+import { GalleryIcon, SiteHeader } from "@/components/ui/SiteHeader";
 import { ArenaPicker, type ArenaView } from "./ArenaPicker";
 import { RoomScan } from "./RoomScan";
 import { SelectScreen } from "./SelectScreen";
@@ -301,6 +301,17 @@ export default function Landing() {
   return (
     <main className="min-h-dvh bg-ink pb-[calc(6.5rem+env(safe-area-inset-bottom))] text-fg">
       <SiteHeader />
+      <Link
+        href="/gallery"
+        data-nav="gallery-banner"
+        className="mx-auto mt-3 flex min-h-12 w-[calc(100%-2rem)] max-w-6xl items-center justify-between rounded-xl bg-gold px-4 font-display text-base font-extrabold text-ink shadow-[0_4px_0_#c9a012] sm:hidden"
+      >
+        <span className="inline-flex items-center gap-2">
+          <GalleryIcon className="h-5 w-5" />
+          Gallery
+        </span>
+        <span className="text-sm font-bold">See every fighter →</span>
+      </Link>
 
       <div className="mx-auto flex max-w-6xl flex-col gap-10 overflow-x-clip px-4 pt-6 sm:px-6 sm:pt-10">
         <section className="grid items-center gap-6 md:grid-cols-[1fr_1.05fr] md:gap-10 [&>*]:min-w-0">
@@ -332,7 +343,8 @@ export default function Landing() {
               <a href="#select" className="btn btn-ghost">
                 Fight now with the roster ↓
               </a>
-              <Link href="/gallery" className="btn btn-outline">
+              <Link href="/gallery" className="btn btn-gold">
+                <GalleryIcon />
                 Browse the gallery
               </Link>
             </div>
@@ -343,6 +355,21 @@ export default function Landing() {
         <div id="select" className="scroll-mt-16">
           <SelectScreen fighters={fighters} p1={p1Id} p2={p2Id} side={side} setSide={setSide} pick={pick} versus={versus} />
         </div>
+
+        <Link
+          href="/gallery"
+          data-nav="gallery-cta"
+          className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border-2 border-gold bg-gold/15 px-4 py-3 text-fg shadow-[0_4px_0_#c9a012] hover:bg-gold/25"
+        >
+          <span>
+            <span className="inline-flex items-center gap-2 font-arcade text-xl text-gold">
+              <GalleryIcon className="h-5 w-5" />
+              Gallery
+            </span>
+            <span className="mt-1 block text-sm text-muted">Every Lux3D fighter, concept art, poster and 3D model.</span>
+          </span>
+          <span className="btn btn-gold btn-sm shrink-0">Open →</span>
+        </Link>
 
         <section className="flex flex-col gap-3" data-stage-select>
           <h2 className="arcade-title text-2xl text-fg sm:text-3xl">
@@ -415,6 +442,10 @@ export default function Landing() {
             <b className="text-blaze">{fighters.find((f) => f.id === p1Id)?.name}</b> vs <b className="text-volt">{fighters.find((f) => f.id === p2Id)?.name}</b> ·{" "}
             {arenaName}
           </div>
+          <Link href="/gallery" aria-label="Gallery" className="btn btn-gold h-14 shrink-0 px-3 font-extrabold uppercase tracking-wide sm:px-4" data-nav="gallery-bar">
+            <GalleryIcon />
+            <span className="hidden xs:inline sm:inline">Gallery</span>
+          </Link>
           <Link
             href={fightHref}
             onClick={() => {
