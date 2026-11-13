@@ -148,21 +148,30 @@ export async function fighterFileExists(id: string, file: string): Promise<boole
 }
 
 /**
- * Cheap "is this file still there?" check for roster listing (no multi-MB reads): fs stat, then the Runtime
- * Cache entry (single item, or the chunk meta + last chunk), then the durable index.
+ * Cheap "is this file still there?" check for roster listing (no multi-MB reassembly): fs stat, then a
+ * complete Runtime Cache entry. Chunked items used to return true if only the last chunk remained after
+ * LRU eviction, which listed fighters whose GLB then 404'd from /api/assets. Require the unchunked
+ * payload, or the first, last, and a middle chunk, then a durable pack that actually has bytes.
  */
 export async function fighterFileProbe(id: string, file: string): Promise<boolean> {
   for (const root of fsRoots()) {
-    if (await fs.stat(path.join(root, id, file)).then(() => true, () => false)) return true;
+    const st = await fs.stat(path.join(root, id, file)).catch(() => null);
+    if (st && st.isFile() && st.size > 0) return true;
   }
   const cache = await getRuntimeCache();
   if (cache) {
     const key = fileKey(id, file);
+    if (isB64(await cache.get(key).catch(() => undefined))) return true;
     const meta = (await cache.get(`${key}:meta`).catch(() => undefined)) as { chunks?: number } | undefined;
-    if (meta?.chunks && isB64(await cache.get(`${key}:${meta.chunks - 1}`).catch(() => undefined))) return true;
-    if (!meta && isB64(await cache.get(key).catch(() => undefined))) return true;
+    if (meta?.chunks && meta.chunks > 0) {
+      const first = await cache.get(`${key}:0`).catch(() => undefined);
+      const last = await cache.get(`${key}:${meta.chunks - 1}`).catch(() => undefined);
+      const mid = meta.chunks > 2 ? await cache.get(`${key}:${Math.floor((meta.chunks - 1) / 2)}`).catch(() => undefined) : first;
+      if (isB64(first) && isB64(last) && isB64(mid)) return true;
+    }
   }
-  return (await loadDurablePack(id))?.has(file) ?? false;
+  const packed = (await loadDurablePack(id))?.get(file);
+  return !!(packed && packed.length > 0);
 }
 
 export async function saveJobRecord(id: string, stage: string, json: string): Promise<void> {
