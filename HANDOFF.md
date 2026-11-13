@@ -473,7 +473,7 @@ The app originally lived only on Vercel. Source was recovered from a production 
 
 ## 9. Current status & known issues (13 Nov 2026, ~08:25 WAT)
 
-**Production:** https://anything-fighter.vercel.app → deployment **`dpl_5zUXe85v37fNY2g3rg1yGvY4tVo3`** (commit `31af7df`: UI redesign + viewer fix). Earlier today: `dpl_FsPMx6FaR71B4q1Veyu8vBxPzvpm` (SDK migration, `1c425bf`), `dpl_EeLbHb9dMiKqMegQNLRU3NW3Xssg` (freestyle animation + rerig, `15a8184`).
+**Production:** https://anything-fighter.vercel.app → deployment **`dpl_6qmMATG1V36wf8K8JSLBJw1a1RYW`** (commit `45c0017`: mobile fight-screen fixes + splat auto-fit). Before that: `dpl_5zUXe85v37fNY2g3rg1yGvY4tVo3` (`31af7df`: UI redesign + viewer fix). Earlier today: `dpl_FsPMx6FaR71B4q1Veyu8vBxPzvpm` (SDK migration, `1c425bf`), `dpl_EeLbHb9dMiKqMegQNLRU3NW3Xssg` (freestyle animation + rerig, `15a8184`).
 
 - Live forge path is end-to-end on the **official SDKs**: verified with forge **`gen-mwemw090-24ff0e` ("SDK Test")**, started 08:07 WAT with `mascot=0` (a humanoid concept image as input): aholo-sdk-asset upload, img-to-3d, auto-rig, 8-clip retarget, RenderCloud poster, done 08:20 WAT, fully rigged, `services = [asset, mesh, rig, retarget, poster]`. It is in `GALLERY_ONLY_IDS` (hidden from the roster).
 - World reads (`list`, `retrieve`) on aholo-sdk-world verified live via `/api/arenas`.
@@ -516,28 +516,23 @@ Also gitignored and therefore not in the repo: `public/vendor/` (rebuilt by `npm
 
 ---
 
-### In progress right now (13 Nov 2026, 08:31 WAT): fight-screen fixes on mobile
-These come from the owner's phone screenshots (Android Chrome, portrait, about 390 px wide) of prod fights. Uncommitted work is in `components/game/Effects.tsx`, `Fighter.tsx` and `Hud.tsx`.
-1. **Splat arena fails to load on mobile.** The bottom-left shows `splat failed: TypeError: Failed to fetch`, so the backdrop is empty. Suspects: the signed-URL redirect from `/api/assets` to Aholo (CORS on the redirected cross-origin URL, an expired signature, the viewer worker not following redirects) or the 5.5 MB fetch on mobile. Goal: reliable loading, a retry, a fallback backdrop, and no raw error text shown to players.
-2. **Splat framing (Kitchen Colosseum, My Room).** When it does load, the camera is pressed against an extreme close-up of a blurry wall. Fix: compute the splat bounds, center and ground height, fix the up-axis, place the fighters on the floor near the scene center, add per-arena overrides in the arenas config, and tune them from headless screenshots at 390x844 and 1440x900.
-3. **Fighters too large and close.** They are clipped at the left and right edges in portrait. Fix: a dynamic camera fitted to the aspect ratio that tracks the fighters' midpoint and zooms with their separation, so both always stay full-body in frame.
-4. **Broken hit flash.** A hit fighter (e.g. Mug Shot) renders as a flat, washed-out cream ghost. The material or emissive override is probably not being restored, or it's a transparency issue. Fix: a brief tint, then restore the original materials.
-5. **Mobile controls overflow.** The PUNCH button is cut off at the right edge, so the control dock needs to fit within 390 px.
-**Plan / files (08:35 WAT):**
-- (1) CORS on `holo-cos.aholo3d.cn` is fine (`Access-Control-Allow-Origin: *`), so the redirect itself is legal; the phone most likely failed on the extra redirect hop or a slow/blocked CDN fetch. Fix: `/api/arenas` returns `splatUrls` = [direct Aholo CDN URL, same-origin streaming proxy `/api/assets/arenas/<id>/world.spz?proxy=1`]; `AholoSplatLayer` tries each with retries, shows only a small "Loading arena…" hint, and on total failure the fight switches to the world's panorama (or Neon Ring). Files: `components/arena/AholoSplatLayer.tsx`, `app/api/assets/[...path]/route.ts`, `lib/arenas-server.ts`, `lib/arenas.ts`, `lib/game/store.ts`, `components/game/GameScene.tsx`, `app/fight/FightClient.tsx`.
-- (2) New `lib/splat-fit.ts`: decodes SPZ positions, floor = densest low height band, footprint = largest floor rectangle, camera looks down its long axis, scale so the camera stays inside the room; result is `origin/scale/yaw/half`. Tuned values for Kitchen Colosseum / My Room / Toy Shop live in `lib/arenas.ts` (`SPLAT_PLACEMENT`); future worlds are auto-fitted server-side and cached. `sim.half` clamps fighters to the walkable width (`lib/game/sim.ts`).
-- (3) `CameraRig` in `components/game/Effects.tsx`: FOV 50/45/40 by aspect; distance from the horizontal FOV and fighter separation (zoom out fast, in slowly).
-- (4) `Fighter.tsx`: flash now tints albedo toward red plus a small red emissive at the original intensity; restores exact base colors (was emissive ×3 + bloom → white ghost).
-- (5) `Hud.tsx` TouchPad: 56 px d-pad + diamond (Kick / Block / 72 px Punch) with safe-area padding, ~270 px total.
-None of this needs Aholo credits or world jobs. When it lands, move this block into "Current status" with the commit and deploy IDs.
+### Mobile fight-screen fixes: DONE (13 Nov 2026, ~09:20 WAT)
+Commits `54d363f` + `45c0017`. Prod deployment **`dpl_6qmMATG1V36wf8K8JSLBJw1a1RYW`** (first deploy of `54d363f`: `dpl_9VrNi58cfqBCFHmA3bMP7yLCHjLf`). No Aholo credits spent, no world jobs started.
+1. **Splat load on mobile.** CORS on `holo-cos.aholo3d.cn` is fine (`Access-Control-Allow-Origin: *`); the likely culprit was the extra 302 hop or a dropped fetch on the phone network (couldn't reproduce on a real Android). `/api/arenas` now returns `splatUrls` = [direct Aholo CDN URL, same-origin streaming proxy `/api/assets/arenas/<id>/world.spz?proxy=1`, verified 200 / 2.6 MB in 3.2 s]. `AholoSplatLayer` takes `urls`, tries each twice with backoff, always passes absolute URLs, shows only a pulsing "Loading arena…", and on total failure (or if the viewer can't start) calls `onFail` → `splatFailed()` in `GameScene.tsx` swaps the arena to the world's panorama, else Neon Ring. Raw error text is gone (console only). Verified with a bad URL: falls back to Neon Ring and the fight continues.
+2. **Splat framing.** New `lib/splat-fit.ts` (pure, ~5 ms per world): decodes SPZ positions + opacity; SpatialGen worlds are anchored on the panorama eye at the splat origin (15-unit radius, floor = densest 5 cm band just below the eye; ignores the sky dome and the street under Rooftop Dojo); Reality scans use the lowest dense band. Footprint = largest floor rectangle (handles L-shaped rooms), camera looks down its long axis toward the denser end wall, scale = clamp(max(17/L, 8.5/W), 0.8, 4), fighters 3 m in front of the far wall; output `origin/scale/yaw/half`. `lib/splat-placement.ts` serves hand-checked overrides from `SPLAT_PLACEMENT` in `lib/arenas.ts` (Kitchen Colosseum, My Room, Toy Shop, Rooftop Dojo), else auto-fits new worlds server-side (8 s budget, continues via `waitUntil`, Runtime Cache key `splatfit:v2:<worldId>`). `sim.half` clamps fighters to the walkable width. Debug tuning hook: `/fight?debug=1&splat=<url>&place=ox,oy,oz,scale,yaw,half`.
+3. **Fight camera.** `CameraRig` (`components/game/Effects.tsx`): vertical FOV 50/45/40 by aspect, distance from the horizontal FOV and fighter separation (+1.15 m margin each side), zooms out fast and in slowly, publishes `fov` to the splat layer.
+4. **Hit flash.** `Fighter.tsx`: brief red tint (albedo multiply + small red emissive at the original intensity), exact restore of base color/emissive. The old flash pushed `emissiveIntensity` to 3 with bloom → white ghost.
+5. **Touch controls.** `Hud.tsx` TouchPad: 56 px d-pad left, diamond right (Kick top, Block left, 72 px Punch), safe-area padding; fits 360–390 px.
+Screenshots (box): before `/workspace/shots/before/{kitchen-colosseum,my-room}-390.png`; after `/workspace/shots/after/{kitchen-colosseum,my-room,toy-shop,rooftop-dojo}-390.png`, `/workspace/shots/after/{kitchen-colosseum,rooftop-dojo}-1440.png`; tuning shots in `/workspace/shots/fit/`.
+World queue at ~09:15 WAT: Kitchen Colosseum, My Room, **Toy Shop and Rooftop Dojo all SUCCEEDED** and are playable; `3FO4K4V8IL5L` (Kitchen duplicate) no longer in the queue; `3FO4K4V8IOHM` (My Room duplicate) RUNNING 0%.
 
 ### Known future fixes / backlog (logged 13 Nov 2026, 08:35 WAT)
 Not started yet. Move each one into "In progress right now" when you begin it, and into status with its commit and deploy IDs when it's done.
 
 **Arenas / worlds**
 - The Aholo sample splat arena card disappears once any generated world is ready, a side effect of `31af7df`. Keep it always available as a reliable fallback arena.
-- Verify the My Room (Reality scan, `3FO4K4V8HJDA`) fight visually on mobile and desktop. It has never been eyeballed, and neither has the Kitchen Colosseum panorama card.
-- Toy Shop (`3FO4K4V8H9C7`) and Rooftop Dojo (`3FO4K4V8HCO8`) are still in Aholo's queue. When they succeed, check that they appear automatically, then tune their framing overrides and preview cards.
+- ~~Verify My Room fight visually~~ done (mobile + desktop, `54d363f`). Kitchen Colosseum panorama card still not eyeballed.
+- ~~Toy Shop / Rooftop Dojo framing~~ done (`45c0017`); check their stage-select preview cards.
 - Duplicate queued worlds `3FO4K4V8IL5L` and `3FO4K4V8IOHM` will spend about 30 credits on worlds we already have. Only Aholo support can cancel them, and only with the owner's approval.
 
 **Forge pipeline**
@@ -564,7 +559,7 @@ Not started yet. Move each one into "In progress right now" when you begin it, a
 Do these in roughly this order unless the owner directs otherwise.
 
 1. ~~Mama re-rig~~ done. ~~Fighting-game UI redesign~~ done. ~~Official SDK migration~~ done (app code; CLI scripts still raw REST).
-2. **Tune splat placement** for Kitchen Colosseum and My Room (`origin` / `scale` / `yaw` / `upAxis` per arena) so the backdrop reads well behind the fighters; screenshot both at 390 px and desktop.
+2. ~~Tune splat placement~~ done (`54d363f`, `45c0017`; auto-fit for future worlds).
 3. Optionally migrate `scripts/*.mjs` to the SDKs; optionally try `lux3d.imageToFourView` then multi-view `imgTo3d` (G1) for better meshes (extra credits; test once).
 4. **Project report** (PDF or PPT) covering concept, development, asset iterations, and results — required for submission.
 5. **Demo video** of the real app running (voiceover/subtitles OK).
@@ -591,6 +586,8 @@ Do these in roughly this order unless the owner directs otherwise.
 | `f3771aa` | Fighting-game UI redesign (home, character select, stage select, VS splash, HUD) |
 | `f3033ea` | Arcade logo/heading on forge + gallery |
 | `31af7df` | Aholo Viewer absolute splat URL fix; stuck = time since first seen RUNNING |
+| `54d363f` | Splat auto-fit + overrides, CDN→proxy→pano/stage fallback, aspect-aware fight camera, hit-flash tint, touch controls fit 390 px |
+| `45c0017` | Splat auto-fit anchored on the SpatialGen viewpoint; Rooftop Dojo placement |
 
 Later commits may exist — run `git log` before you start.
 
