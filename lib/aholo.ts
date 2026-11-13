@@ -789,6 +789,9 @@ export async function listGeneratedFighters(): Promise<FighterDef[]> {
       delete f.photoUrl;
       if (f.thumbUrl && isPrivateFighterFile(e, f.thumbUrl.split("/").pop() ?? "")) f.thumbUrl = f.posterUrl;
       f.thumbUrl = (await ensureThumb(e, f.thumbUrl)) ?? f.thumbUrl;
+      // a concept image evicted before durable storage (seen on "Dial"): fall back to the poster / no thumb
+      const thumbFile = f.thumbUrl?.match(/\/api\/assets\/[^/]+\/([^/?]+)$/)?.[1];
+      if (thumbFile && !(await fighterFileProbe(e, thumbFile))) f.thumbUrl = f.posterUrl !== f.thumbUrl ? f.posterUrl : undefined;
       out.push(f);
     } catch {
       /* unfinished job */

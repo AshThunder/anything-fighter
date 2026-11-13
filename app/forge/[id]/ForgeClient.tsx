@@ -41,7 +41,9 @@ const STAGES: { key: Stage; label: string; tool: string; eta: number }[] = [
 const TIPS = [
   "Punch (J) is fast, kick (K) is slow but hits hard.",
   "Hold L or Shift to block — blocked hits do almost nothing.",
-  "Chain hits within ~1 s for a combo counter.",
+  "Strings: J J K (jab → cross → hook knockdown) or K J. Hold S + K to sweep.",
+  "Jump (W) over sweeps and kick on the way down; crouch (S) under jabs.",
+  "Fill the meter, then press I for a super. Tap block just before a hit to parry.",
   "Your object is being re-imagined as a humanoid so it can be rigged.",
   "Lux3D retargets 10 Mixamo-style moves onto your fighter's new skeleton.",
   "RenderCloud path-traces a KO poster of your fighter mid-punch.",
@@ -369,6 +371,13 @@ export default function ForgeClient() {
               <div className="flex flex-wrap gap-3">
                 <Link href={`/fight?p1=${fighter.id}`} className="rounded-xl bg-orange-500 px-6 py-3 font-display text-lg font-black italic text-black [overflow-wrap:anywhere] hover:bg-orange-400" data-action="fight-new">
                   FIGHT WITH {fighter.name.toUpperCase()}!
+                </Link>
+                <Link
+                  href={`/fight?p2=${fighter.id}&cpu=normal`}
+                  className="rounded-xl border-2 border-sky-400/70 bg-sky-500/15 px-5 py-3 font-display font-black italic text-sky-100 [overflow-wrap:anywhere] hover:bg-sky-500/25"
+                  data-action="fight-against"
+                >
+                  FIGHT AGAINST {fighter.name.toUpperCase()}
                 </Link>
                 <Link href="/gallery" className="rounded-xl border border-orange-300/30 px-5 py-3 font-display">
                   See it in the gallery

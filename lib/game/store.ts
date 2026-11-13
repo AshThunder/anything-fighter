@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { FighterDef } from "../fighters";
 import type { ArenaKind } from "../fighters";
 import type { ArenaDef } from "../arenas";
+import type { CpuLevel } from "./ai";
 
 /** loading → vs (VS splash, skipped in practice) → intro (ROUND 1, 3-2-1) → fight → ko → victory */
 export type Phase = "loading" | "vs" | "intro" | "fight" | "ko" | "victory";
@@ -38,6 +39,12 @@ interface GameStore {
   mode: GameMode;
   /** consecutive clean hits by the same attacker (for the combo counter) */
   combo: { who: 0 | 1; n: number; id: number } | null;
+  /** CPU difficulty (vs CPU); practice always plays easy and never attacks */
+  level: CpuLevel;
+  /** big centre-screen callouts: SPECIAL / SUPER / PARRY / COUNTER / KNOCKDOWN */
+  callout: { id: number; who: 0 | 1; text: string; kind: "special" | "super" | "parry" | "counter" | "armor" | "knockdown" | "antiair" } | null;
+  setLevel: (l: CpuLevel) => void;
+  notify: (who: 0 | 1, kind: NonNullable<GameStore["callout"]>["kind"]) => void;
   setMode: (m: GameMode) => void;
   setup: (f: [FighterDef, FighterDef], arena: ArenaSpec) => void;
   setPhase: (p: Phase) => void;
@@ -59,8 +66,20 @@ export const useGame = create<GameStore>((set) => ({
   hits: [0, 0],
   mode: "cpu",
   combo: null,
+  level: "normal",
+  callout: null,
+  setLevel: (level) => set({ level }),
+  notify: (who, kind) =>
+    set({
+      callout: {
+        id: ++hitId,
+        who,
+        kind,
+        text: { special: "Special!", super: "SUPER!", parry: "Parry!", counter: "Counter!", armor: "Armor!", knockdown: "Knockdown!", antiair: "Anti-air!" }[kind],
+      },
+    }),
   setMode: (mode) => set({ mode }),
-  setup: (fighters, arena) => set({ fighters, arena, phase: "loading", hp: [100, 100], winner: null, hits: [0, 0], combo: null, lastHit: null }),
+  setup: (fighters, arena) => set({ fighters, arena, phase: "loading", hp: [100, 100], winner: null, hits: [0, 0], combo: null, lastHit: null, callout: null }),
   setPhase: (phase) => set({ phase }),
   applyHit: (defender, hpVal, dmg, blocked, heavy) =>
     set((s) => {
@@ -80,5 +99,5 @@ export const useGame = create<GameStore>((set) => ({
       return { hp, hits, combo, lastHit: { id: ++hitId, who: defender, dmg, blocked, heavy } };
     }),
   setWinner: (winner) => set({ winner }),
-  rematch: () => set({ phase: "intro", hp: [100, 100], winner: null, hits: [0, 0], lastHit: null, combo: null }),
+  rematch: () => set({ phase: "intro", hp: [100, 100], winner: null, hits: [0, 0], lastHit: null, combo: null, callout: null }),
 }));

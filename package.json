@@ -12,7 +12,8 @@
     "prebuild": "npm run vendor",
     "screens": "node scripts/screens.mjs",
     "e2e": "node --env-file=.env.local scripts/e2e-test.mjs",
-    "test:durable": "node --conditions=react-server --no-warnings scripts/test-durable.mts"
+    "test:durable": "node --conditions=react-server --no-warnings scripts/test-durable.mts",
+    "test:sim": "node --no-warnings scripts/test-sim.mts"
   },
   "dependencies": {
     "@gltf-transform/core": "^4.5.1",

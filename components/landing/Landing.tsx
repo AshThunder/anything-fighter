@@ -172,6 +172,7 @@ export default function Landing() {
   const [arena, setArena] = useState<string>("stage");
   const [view, setView] = useState<ArenaView>("splat");
   const [versus, setVersus] = useState<"cpu" | "2p">("cpu");
+  const [cpu, setCpu] = useState<"easy" | "normal" | "hard">("normal");
   const [arenas, setArenas] = useState<ArenaDef[]>(BUILTIN_ARENAS);
   const [mode, setMode] = useState<"live" | "mock" | null>(null);
 
@@ -226,7 +227,7 @@ export default function Landing() {
     }
   };
 
-  const fightHref = `/fight?p1=${p1Id}&p2=${p2Id}&arena=${arena}&view=${view}${versus === "2p" ? "&mode=2p" : ""}`;
+  const fightHref = `/fight?p1=${p1Id}&p2=${p2Id}&arena=${arena}&view=${view}${versus === "2p" ? "&mode=2p" : `&cpu=${cpu}`}`;
   const arenaName = arenas.find((a) => a.id === arena)?.name;
 
   return (
@@ -296,6 +297,17 @@ export default function Landing() {
               </button>
             ))}
           </div>
+          {versus === "cpu" && (
+            <button
+              onClick={() => setCpu((c) => (c === "easy" ? "normal" : c === "normal" ? "hard" : "easy"))}
+              className="flex shrink-0 flex-col items-center rounded-xl border border-white/10 px-2 py-1 text-[10px] font-bold uppercase leading-tight text-orange-100/80 sm:text-xs"
+              data-cpu-level={cpu}
+              title="CPU difficulty (tap to change)"
+            >
+              <span className="text-[9px] text-orange-200/50">CPU</span>
+              <span className={cpu === "hard" ? "text-red-400" : cpu === "easy" ? "text-lime-300" : "text-orange-300"}>{cpu}</span>
+            </button>
+          )}
           <div className="hidden min-w-0 flex-1 truncate text-sm text-orange-100/70 sm:block">
             <b style={{ color: "#f97316" }}>{fighters.find((f) => f.id === p1Id)?.name}</b> vs{" "}
             <b style={{ color: "#38bdf8" }}>{fighters.find((f) => f.id === p2Id)?.name}</b> · {arenaName}

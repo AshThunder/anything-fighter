@@ -19,6 +19,10 @@ export default function FightClient() {
   const mode = sp.get("mode") === "2p" ? "2p" : sp.get("mode") === "practice" ? "practice" : "cpu";
   const setMode = useGame((s) => s.setMode);
   useEffect(() => setMode(mode), [mode, setMode]);
+  // CPU difficulty: ?cpu=easy|normal|hard (the roster's fight bar remembers the last pick)
+  const cpu = sp.get("cpu");
+  const setLevel = useGame((s) => s.setLevel);
+  useEffect(() => setLevel(cpu === "easy" || cpu === "hard" ? cpu : "normal"), [cpu, setLevel]);
   const setup = useGame((s) => s.setup);
   const ready = useGame((s) => !!s.fighters);
   const [err, setErr] = useState<string | null>(null);
@@ -44,7 +48,8 @@ export default function FightClient() {
         // fighters not picked by id come from the public roster (no test / gallery-only / demo forges)
         const roster = all.filter((f) => !f.id.startsWith("test-") && !GALLERY_ONLY_IDS.includes(f.id) && f.source !== "mock");
         const pool = roster.length >= 2 ? roster : all;
-        const a = all.find((f) => f.id === p1) ?? pool[0];
+        // any fighter (starter, forged rigged or freestyle) can be P1 or the opponent: ?p1=…&p2=gen-…
+        const a = all.find((f) => f.id === p1) ?? pool.find((f) => f.id !== p2) ?? pool[0];
         const b = all.find((f) => f.id === p2 && f.id !== a.id) ?? pool.find((f) => f.id !== a.id) ?? all.find((f) => f.id !== a.id) ?? PLACEHOLDER_FIGHTERS[0];
         // a fighter opened by id whose files are gone (old forge, lost before durable storage): say so instead of a silent swap
         const gone = [p1, p2].filter((id) => id && !all.some((f) => f.id === id)).length;

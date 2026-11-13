@@ -3,9 +3,10 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { sim } from "@/lib/game/sim";
+import { useGame } from "@/lib/game/store";
 
 const SPARKS_PER_HIT = 14;
-const MAX = 8 * SPARKS_PER_HIT;
+const MAX = 12 * SPARKS_PER_HIT;
 const dummy = new THREE.Object3D();
 
 /** Instanced hit sparks (bright, un-tonemapped → picked up by bloom). */
@@ -24,12 +25,12 @@ export function HitSparks() {
     if (!m) return;
     let n = 0;
     for (const s of sim.fx.sparks) {
-      const k = s.t / 0.5;
-      const spread = (s.heavy ? 1.1 : 0.7) * (1 - Math.pow(1 - k, 3));
+      const k = s.t / (s.big ? 0.7 : 0.5);
+      const spread = (s.big ? 1.9 : s.heavy ? 1.1 : 0.7) * (1 - Math.pow(1 - k, 3));
       for (const d of dirs) {
         if (n >= MAX) break;
         dummy.position.set(s.x + d.x * spread, s.y + d.y * spread, d.z * spread);
-        dummy.scale.setScalar((1 - k) * (s.heavy ? 0.05 : 0.035));
+        dummy.scale.setScalar((1 - k) * (s.big ? 0.085 : s.heavy ? 0.05 : 0.035));
         dummy.updateMatrix();
         m.setMatrixAt(n++, dummy.matrix);
       }
@@ -42,6 +43,58 @@ export function HitSparks() {
       <sphereGeometry args={[1, 6, 6]} />
       <meshBasicMaterial color={[5, 2, 0.4]} toneMapped={false} />
     </instancedMesh>
+  );
+}
+
+const TRAIL_GHOSTS = 6;
+
+/**
+ * Dash trail for the special / super: afterimages of the fighter's silhouette band in the fighter's own colour
+ * (FighterDef.color, picked per forged Lux3D fighter), additive so the bloom pass makes them glow.
+ */
+export function DashTrails() {
+  const fighters = useGame((s) => s.fighters);
+  const groups = useRef<(THREE.Group | null)[]>([null, null]);
+  const hist = useRef<number[][]>([[], []]);
+  useFrame(() => {
+    for (let i = 0; i < 2; i++) {
+      const f = sim.f[i];
+      const h = hist.current[i];
+      h.unshift(f.x);
+      if (h.length > TRAIL_GHOSTS * 2) h.length = TRAIL_GHOSTS * 2;
+      const g = groups.current[i];
+      if (!g) continue;
+      g.children.forEach((c, j) => {
+        const m = c as THREE.Mesh;
+        const x = h[Math.min(h.length - 1, (j + 1) * 2)] ?? f.x;
+        m.position.set(x, 0.95, -0.05);
+        const mat = m.material as THREE.MeshBasicMaterial;
+        mat.opacity = f.trail * 0.45 * (1 - j / TRAIL_GHOSTS);
+        m.visible = f.trail > 0.02 && Math.abs(x - f.x) > 0.05;
+      });
+    }
+  });
+  if (!fighters) return null;
+  return (
+    <>
+      {[0, 1].map((i) => (
+        <group key={i} ref={(g) => void (groups.current[i] = g)}>
+          {Array.from({ length: TRAIL_GHOSTS }, (_, j) => (
+            <mesh key={j} visible={false}>
+              <capsuleGeometry args={[0.28, 1.1, 4, 8]} />
+              <meshBasicMaterial
+                color={new THREE.Color(fighters[i].color).multiplyScalar(2.2)}
+                transparent
+                opacity={0}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+                toneMapped={false}
+              />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </>
   );
 }
 
@@ -105,7 +158,8 @@ export function CameraRig() {
     const minD = portrait ? 3.2 : 5.2;
     const fit = fitYawed(s, m, cos, sin, Math.atan(tanH) * 0.97, minD, 16);
     const dH = (portrait ? 1.12 : 1.3) / tanV + s * sin; // near fighter full body + headroom
-    const targetD = THREE.MathUtils.clamp(Math.max(fit.d, dH, minD), minD, 16);
+    // SUPER cinematic: push in on the fighters while sim.fx.zoom is up
+    const targetD = THREE.MathUtils.clamp(Math.max(fit.d, dH, minD), minD, 16) * (1 - 0.32 * sim.fx.zoom);
     const k = smoothed.current.init ? 1 - Math.exp(-dt * 6) : 1;
     if (!smoothed.current.init) smoothed.current.d = targetD;
     smoothed.current.init = true;
