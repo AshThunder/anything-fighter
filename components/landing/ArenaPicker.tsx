@@ -46,11 +46,21 @@ export function ArenaPicker({
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
               <span className="absolute left-1.5 top-1 rounded bg-black/55 px-1 text-[8px] uppercase tracking-wider text-orange-100/80">{BADGE[a.source]}</span>
               <span className="absolute bottom-1 left-1.5 right-1 truncate font-display text-[11px] font-bold">{a.name}</span>
-              {a.pending && <span className="absolute right-1.5 top-1 animate-pulse text-[8px] uppercase tracking-wider text-orange-200/80">generating…</span>}
+              {a.pending && (
+                <span className={`absolute right-1.5 top-1 text-[8px] uppercase tracking-wider ${a.stuck ? "text-red-300/80" : "animate-pulse text-orange-200/80"}`}>
+                  {a.stuck ? "Aholo queue stuck" : a.status === "RUNNING" ? `generating ${Math.round((a.progress ?? 0) * 100)}%` : a.status ? "queued" : "generating…"}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
+      {arenas.some((a) => a.pending) && (
+        <p className="text-[10px] text-orange-200/45">
+          Greyed-out worlds are still in Aholo&apos;s SpatialGen / Reality queue (one job at a time per account). Every fight works
+          in the ready arenas meanwhile.
+        </p>
+      )}
       {cur?.splatUrl && cur.panoUrl && (
         <div className="flex items-center gap-2 text-[11px] text-orange-200/60">
           Render as

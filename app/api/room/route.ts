@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createRoomScan } from "@/lib/world";
+import { createRoomScan, WorldQueueBusy } from "@/lib/world";
+
+export const maxDuration = 120;
 
 /** Aholo Reality "Fight in your room": multipart `files` = one .mp4/.mov or ≥20 photos. Poll GET /api/arenas/<id>. */
 export async function POST(req: Request) {
@@ -15,6 +17,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ job });
   } catch (e) {
+    if (e instanceof WorldQueueBusy) return NextResponse.json({ error: e.message, code: "WORLD_QUEUE_BUSY" }, { status: 409 });
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }
 }

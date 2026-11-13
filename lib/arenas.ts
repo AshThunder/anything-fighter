@@ -23,6 +23,11 @@ export interface ArenaDef {
   prompt?: string;
   /** World job submitted but not finished yet (shown greyed out in the picker). */
   pending?: boolean;
+  /** Live Aholo world status for pending arenas (PENDING / RUNNING …) and 0–1 progress. */
+  status?: string;
+  progress?: number;
+  /** RUNNING at 0% for a long time: Aholo's queue is stuck; the fight uses another arena meanwhile. */
+  stuck?: boolean;
 }
 
 export const BUILTIN_ARENAS: ArenaDef[] = [
