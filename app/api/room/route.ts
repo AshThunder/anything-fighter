@@ -1,20 +1,35 @@
 import { NextResponse } from "next/server";
 import { createRoomScan, WorldQueueBusy } from "@/lib/world";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
-/** Aholo Reality "Fight in your room": multipart `files` = one .mp4/.mov or ≥20 photos. Poll GET /api/arenas/<id>. */
+type Resource = { url: string; type: "video" | "image" };
+
+/** Aholo Reality "Fight in your room": JSON { name, resources[{url,type}], cover? }.
+ *  Files must already be on Aholo OUS (client uploads with a token from POST /api/room/token)
+ *  so a 10–20 s video never has to pass through Vercel's ~4.5 MB body limit. */
 export async function POST(req: Request) {
-  const fd = await req.formData();
-  const files = fd.getAll("files").filter((f): f is File => f instanceof File);
-  if (!files.length) return NextResponse.json({ error: "Pick a video or at least 20 photos first." }, { status: 400 });
-  const total = files.reduce((s, f) => s + f.size, 0);
-  if (total > 200 * 1024 * 1024) return NextResponse.json({ error: "That's too big (max 200 MB). Try a shorter video." }, { status: 413 });
+  const body = (await req.json().catch(() => null)) as
+    | { name?: string; cover?: string; resources?: Resource[] }
+    | null;
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Pick a video or at least 20 photos first." }, { status: 400 });
+  }
+  const resources = Array.isArray(body.resources) ? body.resources : [];
+  const cover = typeof body.cover === "string" && /^https?:\/\//i.test(body.cover) ? body.cover : undefined;
   try {
     const job = await createRoomScan({
-      name: String(fd.get("name") || "My Room").slice(0, 40),
-      files: await Promise.all(files.map(async (f) => ({ buf: Buffer.from(await f.arrayBuffer()), filename: f.name.replace(/[^\w.-]/g, "_") }))),
+      name: String(body.name || "My Room").slice(0, 40),
+      resources,
+      cover,
     });
+    if (job.status === "FAILED") {
+      console.error(`[room] scan failed to start: ${job.error ?? "unknown"}`);
+      return NextResponse.json(
+        { error: "Couldn't start the room scan right now. Try again later, or fight in the built-in arenas." },
+        { status: 400 },
+      );
+    }
     return NextResponse.json({ job });
   } catch (e) {
     if (e instanceof WorldQueueBusy) return NextResponse.json({ error: e.message, code: "WORLD_QUEUE_BUSY" }, { status: 409 });
