@@ -1,5 +1,5 @@
 import { connection, NextResponse } from "next/server";
-import { createJob, isMockMode, STAGE_LABEL } from "@/lib/aholo";
+import { createJob, isMockMode, STAGE_LABEL, publicJob } from "@/lib/aholo";
 import { checkForgeLimit, clientIp, consumeForgeSlot, FORGE_LIMIT_FALLBACK } from "@/lib/forge-limit";
 
 export const maxDuration = 300;
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       prompt: (form.get("prompt") as string | null) ?? undefined,
       forceMock,
     });
-    return NextResponse.json({ job, labels: STAGE_LABEL });
+    return NextResponse.json({ job: publicJob(job), labels: STAGE_LABEL });
   } catch (e) {
     console.error(`[pipeline] forge failed to start: ${e instanceof Error ? e.message : e}`);
     return NextResponse.json({ error: "The forge couldn't start right now. Try again in a minute, or fight with the roster." }, { status: 500 });

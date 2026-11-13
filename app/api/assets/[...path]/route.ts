@@ -3,6 +3,7 @@ import path from "node:path";
 import { readFighterFile } from "@/lib/store";
 import { ARENA_ROOT, arenaWorldId } from "@/lib/arenas-server";
 import { worldFileUrl } from "@/lib/world";
+import { isPrivateFighterFile } from "@/lib/fighters";
 
 const TYPES: Record<string, string> = {
   ".glb": "model/gltf-binary",
@@ -35,9 +36,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
   const parts = (await ctx.params).path;
   let buf: Buffer | null = null;
   let ext = "";
-  if (parts.length === 2 && SAFE_ID.test(parts[0]) && SAFE_FILE.test(parts[1]) && !BLOCKED(parts[1])) {
+  let immutable = false;
+  if (parts.length === 2 && SAFE_ID.test(parts[0]) && SAFE_FILE.test(parts[1]) && !BLOCKED(parts[1]) && !isPrivateFighterFile(parts[0], parts[1])) {
     buf = await readFighterFile(parts[0], parts[1]);
     ext = path.extname(parts[1]).toLowerCase();
+    // a finished forged fighter's files never change (new forge = new id): let the CDN keep them for a year
+    immutable = parts[0].startsWith("gen-") && parts[1] !== "fighter.json";
   } else if (parts.length === 3 && parts[0] === "arenas" && SAFE_ID.test(parts[1]) && SAFE_FILE.test(parts[2]) && !BLOCKED(parts[2])) {
     try {
       buf = await fs.readFile(path.join(ARENA_ROOT, parts[1], parts[2]));
@@ -87,7 +91,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
   return new Response(new Uint8Array(buf), {
     headers: {
       "Content-Type": TYPES[ext] ?? "application/octet-stream",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": immutable ? "public, max-age=31536000, s-maxage=31536000, immutable" : "public, max-age=3600",
       "Access-Control-Allow-Origin": "*",
     },
   });

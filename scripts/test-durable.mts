@@ -7,10 +7,13 @@ import { MockAgent, setGlobalDispatcher } from "undici";
 process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_teststore123_fakefakefake";
 const store = new Map<string, Buffer>();
 const ops = { put: 0, get: 0 };
+const maxAges: string[] = [];
 const agent = new MockAgent(); agent.disableNetConnect(); setGlobalDispatcher(agent);
 const api = agent.get("https://vercel.com");
 api.intercept({ path: (p: string) => p.startsWith("/api/blob"), method: "PUT" }).reply((o: any) => {
   ops.put++;
+  const h = o.headers as Record<string, string>;
+  maxAges.push(String(h?.["x-cache-control-max-age"] ?? h?.["X-Cache-Control-Max-Age"] ?? "?"));
   const u0 = new URL("https://vercel.com" + o.path);
   const pathname = u0.searchParams.get("pathname")!;
   store.set(pathname, Buffer.from(o.body as any));
@@ -33,3 +36,9 @@ console.log("pack files", p && [...p.keys()], "orig excluded", !p?.has("rigged.o
 console.log("missing", await d.loadDurablePack("gen-zzz-000000"), "ops", ops);
 const d2 = await import("../lib/durable.ts?cold=1");
 console.log("cold ids", await d2.durableIds(), "cold pack", [...((await d2.loadDurablePack("gen-bbb-222222")) ?? new Map()).keys()], "ops", ops);
+
+console.log("cache max-ages per put", maxAges.join(","));
+const pr = await d.probeDurable();
+console.log("probe", JSON.stringify(pr));
+if (!pr.ok) throw new Error("probe failed");
+if (maxAges[0] !== "31536000") throw new Error("pack cache max-age should be 1 year, got " + maxAges[0]);

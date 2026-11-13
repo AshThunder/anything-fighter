@@ -67,7 +67,7 @@ export default function GalleryClient() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={src} alt={`${f.name} ${label}`} loading="lazy" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-[10px] text-orange-200/30">—</div>
+                      <div className="flex h-full items-center justify-center text-[10px] text-orange-200/30">{label === "Photo" && f.id.startsWith("gen-") ? "🔒 private" : "—"}</div>
                     )}
                     <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[8px] uppercase tracking-wider text-orange-100/70">{label}</span>
                   </div>

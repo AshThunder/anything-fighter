@@ -13,8 +13,7 @@
     "ko": "/api/assets/gen-mwemw090-24ff0e/anim-ko.glb",
     "victory": "/api/assets/gen-mwemw090-24ff0e/anim-victory.glb"
   },
-  "thumbUrl": "/api/assets/gen-mwemw090-24ff0e/photo.jpg",
-  "photoUrl": "/api/assets/gen-mwemw090-24ff0e/photo.jpg",
+  "thumbUrl": "/api/assets/gen-mwemw090-24ff0e/thumb.webp",
   "posterUrl": "/api/assets/gen-mwemw090-24ff0e/poster.jpg",
   "color": "#a3e635",
   "source": "lux3d",

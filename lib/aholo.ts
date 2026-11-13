@@ -4,6 +4,7 @@ import type { HumanoidAnimationId, Lux3dClient } from "@manycore/aholo-sdk-lux3d
 import { AholoError, apiKey, call, isMockMode, lux3dClient, uploadAsset } from "./aholo-sdk";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { isPrivateFighterFile } from "./fighters";
 import { LUX3D_ANIMATION_MAP, LUX3D_RETARGET_IDS, MOVES, type Move } from "./moves";
 import { STARTER_ROSTER_IDS, type AholoServiceKey, type FighterDef } from "./fighters";
 import { optimizeFighterGlb, shrinkTextures, stripToAnimation, weldSimplify } from "./optimize";
@@ -726,6 +727,13 @@ export function jobServices(job: Job): AholoServiceKey[] {
   return s;
 }
 
+/** Job as sent to browsers: without `remote` (signed Aholo URLs, including the player's uploaded photo). */
+export function publicJob(job: Job): Omit<Job, "remote"> {
+  const { remote: _remote, ...pub } = job;
+  void _remote;
+  return pub;
+}
+
 export function jobToFighter(job: Job): FighterDef {
   const id = job.id;
   const anims: Partial<Record<Move, string>> = {};
@@ -746,8 +754,8 @@ export function jobToFighter(job: Job): FighterDef {
     modelUrl: assetUrl(id, job.files.rigged ?? job.files.statue ?? job.files.mesh ?? "rigged.glb"),
     animUrls: Object.keys(anims).length ? anims : undefined,
     exports: Object.keys(exports).length ? exports : undefined,
-    thumbUrl: job.files.mascot ? assetUrl(id, job.files.mascot) : job.files.photo ? assetUrl(id, job.files.photo) : undefined,
-    photoUrl: job.files.photo ? assetUrl(id, job.files.photo) : undefined,
+    // never the player's photo (kept private): Lux3D concept, else the RenderCloud poster
+    thumbUrl: job.files.mascot ? assetUrl(id, job.files.mascot) : job.files.poster ? assetUrl(id, job.files.poster) : undefined,
     posterUrl: job.files.poster ? assetUrl(id, job.files.poster) : undefined,
     color: COLORS[parseInt(id.slice(-2), 16) % COLORS.length],
     source: job.mode === "mock" ? "mock" : "lux3d",
@@ -777,6 +785,9 @@ export async function listGeneratedFighters(): Promise<FighterDef[]> {
       if (!backfill && durableEnabled() && e.startsWith("gen-") && f.source === "lux3d" && !durable.has(e) && !backfillTried.has(e)) backfill = e;
       const poster = path.join(process.cwd(), "public", "posters", e, "poster.png");
       if (!f.posterUrl && (await fs.stat(poster).catch(() => null))) f.posterUrl = `/api/assets/posters/${e}/poster.png`;
+      // privacy: older fighter.json files listed the player's photo
+      delete f.photoUrl;
+      if (f.thumbUrl && isPrivateFighterFile(e, f.thumbUrl.split("/").pop() ?? "")) f.thumbUrl = f.posterUrl;
       f.thumbUrl = (await ensureThumb(e, f.thumbUrl)) ?? f.thumbUrl;
       out.push(f);
     } catch {
@@ -802,7 +813,7 @@ export async function listGeneratedFighters(): Promise<FighterDef[]> {
 async function ensureThumb(id: string, src?: string): Promise<string | undefined> {
   if (await fighterFileExists(id, "thumb.webp")) return assetUrl(id, "thumb.webp");
   const file = src?.match(/\/api\/assets\/[^/]+\/([^/?]+\.(?:png|jpe?g))$/)?.[1];
-  if (!file) return undefined;
+  if (!file || isPrivateFighterFile(id, file)) return undefined;
   try {
     const srcBuf = await readFighterFile(id, file);
     if (!srcBuf) return undefined;

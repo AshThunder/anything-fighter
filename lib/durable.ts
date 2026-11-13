@@ -69,7 +69,7 @@ async function writeBlob(pathname: string, body: Buffer, contentType: string, ca
 
 // ── index ──
 let indexMemo: { at: number; ids: Promise<string[]> } | null = null;
-const INDEX_MEMO_MS = 60_000;
+const INDEX_MEMO_MS = 5 * 60_000; // index reads are Blob simple ops (Hobby: 10k/month); saves update the memo directly
 
 async function fetchIndex(useCache: boolean): Promise<string[]> {
   try {
@@ -82,7 +82,7 @@ async function fetchIndex(useCache: boolean): Promise<string[]> {
   }
 }
 
-/** Fighter ids with a durable pack (memoised per instance for a minute). */
+/** Fighter ids with a durable pack (memoised per instance for five minutes). */
 export async function durableIds(): Promise<string[]> {
   if (!durableEnabled()) return [];
   if (!indexMemo || Date.now() - indexMemo.at > INDEX_MEMO_MS) indexMemo = { at: Date.now(), ids: fetchIndex(true) };
@@ -120,7 +120,7 @@ export async function saveDurablePack(id: string, files: FighterPack): Promise<b
   if (!durableEnabled()) return false;
   for (const name of files.keys()) if (name.includes(".orig.")) files.delete(name); // never persist raw 22 MB GLBs
   try {
-    await writeBlob(`${PREFIX}${id}.afp`, encodePack(files), "application/octet-stream", 300);
+    await writeBlob(`${PREFIX}${id}.afp`, encodePack(files), "application/octet-stream", 31536000); // bundles are immutable per id
     // read-modify-write with a fresh (uncached) read; a lost race is healed by the backfill in listGeneratedFighters
     const ids = await fetchIndex(false);
     if (!ids.includes(id)) {
@@ -134,4 +134,30 @@ export async function saveDurablePack(id: string, files: FighterPack): Promise<b
     console.warn(`[durable] save failed for ${id}: ${e instanceof Error ? e.message : e}`);
     return false;
   }
+}
+
+// ── health probe (no credits; 1 advanced + 1 simple Blob op, at most once per instance per 10 min) ──
+let probeMemo: { at: number; result: Promise<{ ok: boolean; ms: number; error?: string }> } | null = null;
+const PROBE_MEMO_MS = 10 * 60_000;
+
+/** Write a tiny dummy pack (`health/probe.afp`) and read it back: proves the store and token work end to end. */
+export function probeDurable(): Promise<{ ok: boolean; ms: number; error?: string }> {
+  if (!durableEnabled()) return Promise.resolve({ ok: false, ms: 0, error: "no Blob store connected" });
+  if (probeMemo && Date.now() - probeMemo.at < PROBE_MEMO_MS) return probeMemo.result;
+  const result = (async () => {
+    const t0 = Date.now();
+    try {
+      const stamp = Buffer.from(String(t0));
+      await writeBlob("health/probe.afp", encodePack(new Map([["stamp.txt", stamp]])), "application/octet-stream", 60);
+      const back = await readBlob("health/probe.afp", false);
+      const pack = back ? decodePack(back) : null;
+      const ok = !!pack && pack.get("stamp.txt")?.equals(stamp) === true;
+      return { ok, ms: Date.now() - t0, ...(ok ? {} : { error: "read-back mismatch" }) };
+    } catch (e) {
+      // the error class name only (Blob errors can echo request details)
+      return { ok: false, ms: Date.now() - t0, error: e instanceof Error ? e.name : "error" };
+    }
+  })();
+  probeMemo = { at: Date.now(), result };
+  return result;
 }
