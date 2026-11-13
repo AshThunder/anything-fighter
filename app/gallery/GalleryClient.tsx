@@ -10,6 +10,17 @@ import { GALLERY_POLICY } from "@/lib/gallery-policy";
 
 const VersusPreview = dynamic(() => import("@/components/landing/VersusPreview"), { ssr: false });
 
+function GalleryImg({ src, alt }: { src: string; alt: string }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) {
+    return <div className="flex h-full items-center justify-center bg-panel-2 px-2 text-center text-xs text-dim">Preview unavailable</div>;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setOk(false)} className="h-full w-full object-cover object-center" />
+  );
+}
+
 export default function GalleryClient() {
   const [fighters, setFighters] = useState<FighterDef[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -80,14 +91,17 @@ export default function GalleryClient() {
         <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {fighters?.map((f) => {
             const moves = Object.keys(f.animUrls ?? {}).length;
-            // photo tile only when there is one (or a private one for player forges); concept + poster always
+            // Only render tiles that have a real URL so we never show a blank "—" panel.
             const tiles = (
               [
                 [f.photoUrl, "Photo"],
-                [f.thumbUrl, "Lux3D concept"],
-                [f.posterUrl, "RenderCloud"],
+                [f.thumbUrl, f.thumbUrl && f.posterUrl && f.thumbUrl !== f.posterUrl ? "Lux3D concept" : f.thumbUrl && !f.posterUrl ? "Preview" : "Lux3D concept"],
+                [f.posterUrl && f.posterUrl !== f.thumbUrl ? f.posterUrl : undefined, "RenderCloud"],
               ] as [string | undefined, string][]
-            ).filter(([src, label]) => label !== "Photo" || src || f.id.startsWith("gen-"));
+            ).filter((row): row is [string, string] => !!row[0]);
+            const showPrivate = !f.photoUrl && f.id.startsWith("gen-");
+            const hasArt = tiles.length > 0;
+            const show3d = open === f.id || (!hasArt && !!f.modelUrl);
             return (
               <article key={f.id} className="card overflow-hidden" data-gallery-card={f.id}>
                 <div className="flex items-center gap-2.5 border-b border-line px-3 py-2.5">
@@ -98,23 +112,29 @@ export default function GalleryClient() {
                   </div>
                   <span className="shrink-0 rounded-md border border-line-strong px-1.5 py-0.5 text-[11px] font-bold text-fg">{moves ? `${moves} moves` : "freestyle"}</span>
                 </div>
-                <div className={`grid h-44 gap-px bg-line ${tiles.length === 3 ? "grid-cols-3" : tiles.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
-                  {tiles.map(([src, label]) => (
-                    <div key={label} className="relative overflow-hidden bg-panel-2">
-                      {src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={src} alt={`${f.name} ${label}`} loading="lazy" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-dim">{label === "Photo" && f.id.startsWith("gen-") ? "🔒 Private" : "—"}</div>
-                      )}
-                      <span className="absolute bottom-1 left-1 rounded bg-ink px-1 py-px text-[9px] font-bold uppercase tracking-wider text-fg">{label}</span>
-                    </div>
-                  ))}
-                </div>
-                {open === f.id && (
-                  <div className="h-64 border-b border-line bg-panel-2">
+                {hasArt && (
+                  <div className={`grid h-48 gap-px bg-line sm:h-52 ${tiles.length + (showPrivate ? 1 : 0) >= 3 ? "grid-cols-3" : tiles.length + (showPrivate ? 1 : 0) === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {showPrivate && (
+                      <div className="relative flex h-full items-center justify-center bg-panel-2 text-xs text-dim">
+                        🔒 Private
+                        <span className="absolute bottom-1 left-1 rounded bg-ink px-1 py-px text-[9px] font-bold uppercase tracking-wider text-fg">Photo</span>
+                      </div>
+                    )}
+                    {tiles.map(([src, label]) => (
+                      <div key={label} className="relative overflow-hidden bg-panel-2">
+                        <GalleryImg src={src} alt={`${f.name} ${label}`} />
+                        <span className="absolute bottom-1 left-1 rounded bg-ink px-1 py-px text-[9px] font-bold uppercase tracking-wider text-fg">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {show3d && (
+                  <div className={`border-b border-line bg-panel-2 ${hasArt ? "h-64" : "h-72"}`} data-gallery-3d={f.id}>
                     <VersusPreview a={f} solo />
                   </div>
+                )}
+                {!hasArt && !f.modelUrl && (
+                  <div className="flex h-40 items-center justify-center bg-panel-2 text-sm text-dim">No preview available</div>
                 )}
                 <PoweredBy fighter={f} className="px-3 pt-3" />
                 <div className="grid grid-cols-3 gap-2 p-3">
@@ -124,8 +144,13 @@ export default function GalleryClient() {
                   <Link href={`/fight?p2=${f.id}`} className="btn btn-outline-volt btn-sm" data-action="fight-against">
                     Fight vs
                   </Link>
-                  <button onClick={() => setOpen(open === f.id ? null : f.id)} aria-expanded={open === f.id} className="btn btn-ghost btn-sm">
-                    {open === f.id ? "Hide 3D" : "View 3D"}
+                  <button
+                    onClick={() => setOpen(open === f.id ? null : f.id)}
+                    aria-expanded={show3d}
+                    className="btn btn-ghost btn-sm"
+                    disabled={!f.modelUrl}
+                  >
+                    {!f.modelUrl ? "No 3D" : show3d && hasArt ? "Hide 3D" : show3d && !hasArt ? "3D preview" : "View 3D"}
                   </button>
                 </div>
                 <div className="px-3 pb-3">
