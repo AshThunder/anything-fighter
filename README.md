@@ -154,6 +154,20 @@ When a clip is missing, `Fighter.tsx` falls back to whole-body procedural motion
 - The rig result `content` is a plain GLB URL. The retarget result `content` is a JSON string: `{"actions":[{"animation_id","status","animationGlbUrl"}]}`.
 - The mesh comes back roughly centred at the origin, about 0.95 units tall (with `aiPredictSize: true`). The game normalises every fighter to 1.8 m.
 
+## Reliability notes (2026-11-13)
+
+- **Forge pipeline (in-app):** photo → OUS upload → Lux3D multimodal concept → Lux3D image→3D (1.8 m character via `customSize`) →
+  humanoid auto-rig → retarget 10 moves → **RenderCloud KO poster** (punch pose baked to a static mesh, ingested, path-traced) → optional print export.
+- The forge page polls in a self-rescheduling loop (backoff, resumes on tab focus / network back, 75 s request timeout), so a
+  mobile network blip no longer freezes it on "Failed to fetch".
+- `RIG_ELIGIBILITY_FAILED`: we re-rig once on a 1.8 m normalised copy of the mesh; if Lux3D still refuses, the fighter ships
+  "freestyle" (unrigged Lux3D mesh with procedural moves) instead of dead-ending. No extra mesh credits.
+- RenderCloud poster is optional: any failure or >8 min skips it.
+- **World queue:** the account runs one SpatialGen/Reality job at a time and there is no cancel endpoint. `/api/arenas` reports
+  live world status + the account queue; new world jobs are refused while the queue is busy; stuck jobs (RUNNING 0 % > 90 min)
+  are flagged and the fight always has the Neon Ring + Aholo Viewer sample splat. Finished worlds are served through
+  `/api/assets/arenas/<id>/…`, which redirects to a freshly signed Aholo URL (no multi-MB rehosting in serverless storage).
+
 ## Aholo Viewer + R3F (findings)
 
 - `@manycore/aholo-viewer@1.14.0` is a **standalone WebGL engine**: its own canvas and context, its own scene graph and math, and no three.js dependency. **It cannot be embedded inside an R3F `<Canvas>`.** We stack two canvases instead: the Aholo Viewer underneath and a transparent R3F canvas on top, with the Aholo camera synced every frame from `sim.cam` (game coords mapped to OpenCV −Y-up splat coords). Limitation: the canvases share no depth buffer, so fighters always draw over the splat. That is fine for a backdrop arena.
