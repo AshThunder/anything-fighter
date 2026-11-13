@@ -692,7 +692,7 @@ Not started yet. Move each one into "In progress right now" when you begin it, a
 
 ### Open issues (reported 13 Nov, mobile)
 
-The owner reported new mobile gameplay issues on 13 Nov 2026 (after the submission draft was saved). They are being triaged; details were not written up in this handoff pass. Do not treat this placeholder as a fix list or close the reports from it.
+- **Arena missing in live play + recording shows only the room (no fighters):** the room is an Aholo Viewer canvas under a separate R3F fighter canvas. If the fighter canvas is opaque it hides the room on screen, and an independent rAF `drawImage` often captured only the room buffer. Fix (this commit): transparent clear + `scene.background = null` on splat fights, tag both canvases, and composite them after the R3F frame (`pumpClip`). Owner will verify on their phone. **K.O. appearing ~9 s after the bar hits 0 in one clip was not changed** (not a one-line fix). Fighter names in the recording were nudged down so they are less likely to clip at the top.
 
 ---
 
