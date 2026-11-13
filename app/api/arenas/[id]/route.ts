@@ -1,6 +1,6 @@
 import { connection, NextResponse } from "next/server";
 import { listArenas } from "@/lib/arenas-server";
-import { advanceWorldJob } from "@/lib/world";
+import { advanceWorldJob, STUCK_MS } from "@/lib/world";
 
 /** Poll + advance a SpatialGen / Reality arena job; returns the finished arena when ready. */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -9,7 +9,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const job = await advanceWorldJob(id);
     const arena = job.status === "SUCCEEDED" ? (await listArenas()).find((a) => a.id === id) : undefined;
-    return NextResponse.json({ job, arena });
+    const stuck = job.status !== "SUCCEEDED" && job.status !== "FAILED" && (job.progress ?? 0) === 0 && Date.now() - job.createdAt > STUCK_MS;
+    return NextResponse.json({ job, arena, stuck });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 404 });
   }

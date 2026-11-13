@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { readFighterFile } from "@/lib/store";
-import { ARENA_ROOT } from "@/lib/arenas-server";
+import { ARENA_ROOT, arenaWorldId } from "@/lib/arenas-server";
+import { worldFileUrl } from "@/lib/world";
 
 const TYPES: Record<string, string> = {
   ".glb": "model/gltf-binary",
@@ -44,6 +45,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ path: string[]
       buf = null;
     }
     ext = path.extname(parts[2]).toLowerCase();
+    if (!buf && /^(world\.(spz|ply|sog)|pano\.(jpe?g|png|webp))$/.test(parts[2])) {
+      // Finished Aholo world that isn't baked into the deployment: point at a freshly signed Aholo URL
+      // (result URLs expire, multi-MB splats are too big to proxy through a function).
+      const worldId = await arenaWorldId(parts[1]);
+      const url = worldId ? await worldFileUrl(worldId, parts[2]) : null;
+      if (!url) return new Response("Not found", { status: 404 });
+      if (ext.startsWith(".p") && ext !== ".ply") {
+        // panorama: stream it through so three.js TextureLoader gets same-origin bytes (no CORS surprises)
+        const up = await fetch(url).catch(() => null);
+        if (!up?.ok || !up.body) return new Response("Upstream error", { status: 502 });
+        return new Response(up.body, {
+          headers: { "Content-Type": up.headers.get("content-type") ?? TYPES[ext] ?? "image/jpeg", "Cache-Control": "public, max-age=600" },
+        });
+      }
+      return Response.redirect(url, 302);
+    }
   } else if (parts.length === 3 && parts[0] === "posters" && SAFE_ID.test(parts[1]) && /^[\w-]+\.png$/.test(parts[2])) {
     try {
       buf = await fs.readFile(path.join(process.cwd(), "public", "posters", parts[1], parts[2]));

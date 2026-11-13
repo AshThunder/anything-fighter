@@ -33,25 +33,45 @@ export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a:
     const fd = new FormData();
     fd.set("name", "Your Room");
     files.forEach((f) => fd.append("files", f, f.name));
-    const r = await fetch("/api/room", { method: "POST", body: fd }).then((x) => x.json());
-    if (r.error) {
-      setErr(r.error);
+    try {
+      const res = await fetch("/api/room", { method: "POST", body: fd });
+      const r = await res.json().catch(() => ({ error: `Upload failed (HTTP ${res.status})` }));
+      if (r.error) {
+        setErr(r.error);
+        setBusy(false);
+      } else setJob(r.job);
+    } catch {
+      setErr("Couldn't reach the server, check your connection and try again.");
       setBusy(false);
-    } else setJob(r.job);
+    }
   };
 
   useEffect(() => {
     if (!job || job.status === "SUCCEEDED" || job.status === "FAILED") return;
     const t = setTimeout(async () => {
-      const r = await fetch(`/api/arenas/${job.id}`).then((x) => x.json());
       setNow(Date.now());
-      if (r.error) return setErr(r.error);
-      setJob(r.job);
-      if (r.arena) {
-        setBusy(false);
-        onReady(r.arena);
+      try {
+        const r = await fetch(`/api/arenas/${job.id}`, { cache: "no-store" }).then((x) => x.json());
+        if (r.error) {
+          setErr(r.error);
+          setBusy(false);
+          return;
+        }
+        if (r.stuck) {
+          // Don't hang the UI on Aholo's queue: stop polling, keep the job (it shows up as "generating" in the picker).
+          setErr("Aholo's world queue is stuck right now. Your scan stays queued and will appear in the arena list when it finishes.");
+          setBusy(false);
+          return;
+        }
+        setJob({ ...r.job });
+        if (r.arena) {
+          setBusy(false);
+          onReady(r.arena);
+        }
+        if (r.job.status === "FAILED") setBusy(false);
+      } catch {
+        setJob((j) => (j ? { ...j } : j)); // network blip: re-arm the timer and try again
       }
-      if (r.job.status === "FAILED") setBusy(false);
     }, job.mode === "mock" ? 1000 : 8000);
     return () => clearTimeout(t);
   }, [job, onReady]);
