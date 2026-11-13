@@ -101,9 +101,20 @@ export default function Landing() {
     fd.set("photo", await downscale(file), "photo.jpg");
     fd.set("name", name || "Mystery Fighter");
     fd.set("exportPrint", exportPrint ? "1" : "0");
-    const r = await fetch("/api/pipeline", { method: "POST", body: fd }).then((x) => x.json());
-    if (r.error) {
-      setJob({ id: "", stage: "upload", error: r.error, mode: mode ?? "mock" });
+    let r: { error?: string; job?: { id: string } };
+    try {
+      const res = await fetch("/api/pipeline", { method: "POST", body: fd });
+      const text = await res.text();
+      try {
+        r = JSON.parse(text);
+      } catch {
+        r = { error: `Server busy (HTTP ${res.status}), please try again.` };
+      }
+    } catch {
+      r = { error: "Couldn't reach the server, check your connection and try again." };
+    }
+    if (r.error || !r.job) {
+      setJob({ id: "", stage: "upload", error: r.error ?? "Forge failed to start", mode: mode ?? "mock" });
       setBusy(false);
       return;
     }

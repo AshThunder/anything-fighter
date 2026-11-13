@@ -6,7 +6,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Hud } from "@/components/game/Hud";
 import { useGame } from "@/lib/game/store";
 import type { FighterDef } from "@/lib/fighters";
@@ -43,6 +43,7 @@ interface JobView {
   files: { photo?: string; mascot?: string };
   log: string[];
   retries?: number;
+  rigless?: boolean;
 }
 
 export default function ForgeClient() {
@@ -58,26 +59,86 @@ export default function ForgeClient() {
   const setMode = useGame((s) => s.setMode);
   const ready = useGame((s) => !!s.fighters);
 
-  const poll = useCallback(async () => {
-    try {
-      const r = await fetch(`/api/pipeline/${id}`, { cache: "no-store" });
-      const j = await r.json();
-      if (!r.ok || j.error) throw new Error(j.error ?? `HTTP ${r.status}`);
-      fails.current = 0;
-      setErr(null);
-      setJob(j.job);
-      if (j.fighter) setFighter(j.fighter);
-    } catch (e) {
-      fails.current++;
-      setErr(`${e instanceof Error ? e.message : e} (retrying…)`);
-    }
-  }, [id]);
+  const [loop, setLoop] = useState(0); // bump to restart polling (after a manual retry)
+  const [lost, setLost] = useState(false);
 
+  /**
+   * Poll loop. Each GET advances the job server-side, so polling must never silently stop: the old version
+   * scheduled the next poll from a useEffect keyed on `job`, so a single failed fetch (phone network blip,
+   * tab backgrounded) left `job` unchanged and polling died with "Failed to fetch (retrying…)" forever.
+   * Now the loop reschedules itself after every attempt (with backoff), resumes immediately when the tab
+   * becomes visible / the network comes back, and aborts requests that hang.
+   */
   useEffect(() => {
-    if (fighter || job?.error) return;
-    const t = setTimeout(poll, job ? (job.mode === "mock" ? 900 : Math.min(15000, 3500 * 2 ** Math.min(fails.current, 2))) : 0);
-    return () => clearTimeout(t);
-  }, [job, fighter, poll]);
+    if (!id) return;
+    let stopped = false;
+    let inflight = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = (ms: number) => {
+      clearTimeout(timer);
+      if (!stopped) timer = setTimeout(tick, ms);
+    };
+    async function tick() {
+      if (stopped || inflight) return;
+      inflight = true;
+      let next = 3500;
+      try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 75_000);
+        const r = await fetch(`/api/pipeline/${id}`, { cache: "no-store", signal: ctrl.signal }).finally(() => clearTimeout(to));
+        const text = await r.text();
+        let j: { job?: JobView; fighter?: FighterDef | null; error?: string };
+        try {
+          j = JSON.parse(text);
+        } catch {
+          throw new Error(`server busy (HTTP ${r.status})`);
+        }
+        if (r.status === 404) {
+          setLost(true);
+          setErr(j.error ?? "Job not found");
+          stopped = true;
+          return;
+        }
+        if (!r.ok || j.error || !j.job) throw new Error(j.error ?? `HTTP ${r.status}`);
+        fails.current = 0;
+        setErr(null);
+        setJob(j.job);
+        if (j.fighter) {
+          setFighter(j.fighter);
+          stopped = true;
+          return;
+        }
+        if (j.job.error) {
+          stopped = true;
+          return;
+        }
+        next = j.job.mode === "mock" ? 900 : 3500;
+      } catch (e) {
+        fails.current++;
+        const msg = e instanceof Error ? e.message : String(e);
+        const net = /failed to fetch|network|load failed|abort/i.test(msg);
+        setErr(net ? "Connection hiccup, reconnecting… (your fighter keeps forging at Aholo)" : `${msg} (retrying…)`);
+        next = Math.min(15_000, 2500 * 2 ** Math.min(fails.current, 3));
+      } finally {
+        inflight = false;
+      }
+      schedule(next);
+    }
+    const wake = () => {
+      if (document.visibilityState === "visible" && !stopped) schedule(0);
+    };
+    schedule(0);
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("online", wake);
+    window.addEventListener("focus", wake);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", wake);
+      window.removeEventListener("online", wake);
+      window.removeEventListener("focus", wake);
+    };
+  }, [id, loop]);
 
   useEffect(() => {
     const i = setInterval(() => {
@@ -98,11 +159,16 @@ export default function ForgeClient() {
   };
 
   const retry = async () => {
-    const r = await fetch(`/api/pipeline/${id}/retry`, { method: "POST" }).then((x) => x.json());
-    if (r.error) setErr(r.error);
-    else {
-      setErr(null);
-      setJob(r.job);
+    try {
+      const r = await fetch(`/api/pipeline/${id}/retry`, { method: "POST" }).then((x) => x.json());
+      if (r.error) setErr(r.error);
+      else {
+        setErr(null);
+        setJob(r.job);
+        setLoop((n) => n + 1);
+      }
+    } catch {
+      setErr("Couldn't reach the server, check your connection and try again.");
     }
   };
 
@@ -110,7 +176,10 @@ export default function ForgeClient() {
   const idx = job ? (job.stage === "done" ? stages.length : stages.findIndex((s) => s.key === job.stage)) : -1;
   const remaining = job && idx >= 0 && idx < stages.length ? stages.slice(idx).reduce((a, s) => a + s.eta, 0) - Math.max(0, (now - job.stageStartedAt) / 1000) : 0;
   const elapsed = job ? Math.round((now - job.createdAt) / 1000) : 0;
-  const asset = (f?: string) => (f ? `/api/assets/${id}/${f}` : undefined);
+  const stageAge = job ? Math.max(0, (now - job.stageStartedAt) / 1000) : 0;
+  const curEta = idx >= 0 && idx < stages.length ? stages[idx].eta : 0;
+  const slow = !!job && !fighter && !job.error && job.mode === "live" && curEta > 0 && stageAge > Math.max(180, curEta * 4);
+  const asset = (f?: string) => (f && id ? `/api/assets/${id}/${f}` : undefined);
 
   return (
     <main className="relative min-h-dvh bg-[#0d0b09] text-orange-50">
@@ -191,6 +260,31 @@ export default function ForgeClient() {
               </div>
             )}
             {err && !job?.error && <p className="text-xs text-yellow-300/80">{err}</p>}
+            {lost && (
+              <p className="text-sm text-orange-100/70">
+                This forge job has expired (jobs are kept for 6 hours).{" "}
+                <Link href="/" className="underline">
+                  Forge a new fighter
+                </Link>{" "}
+                or pick one from the{" "}
+                <Link href="/gallery" className="underline">
+                  gallery
+                </Link>
+                .
+              </p>
+            )}
+            {slow && !err && (
+              <p className="text-xs text-orange-200/60">
+                Aholo is busier than usual on this step ({Math.round(stageAge / 60)} min so far). It&apos;ll keep going; you can practice
+                below or leave this page open and come back.
+              </p>
+            )}
+            {fighter && job?.rigless && (
+              <p className="text-xs text-orange-200/70">
+                Lux3D&apos;s auto-rig couldn&apos;t find a humanoid skeleton in this shape, so {fighter.name} fights freestyle: the full
+                Lux3D mesh, animated with procedural lunges, spins and hops. Try a photo with a clearer body shape for full rigged moves.
+              </p>
+            )}
             {fighter ? (
               <div className="flex flex-wrap gap-3">
                 <Link href={`/fight?p1=${fighter.id}`} className="rounded-xl bg-orange-500 px-6 py-3 font-display text-lg font-black italic text-black hover:bg-orange-400" data-action="fight-new">
