@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Anything Fighter — Project Report · Manycore Aholo Global 3D AI Hackathon</title>
+<style>
+@font-face{font-family:Bungee;src:url(assets/Bungee.woff2) format("woff2")}
+@font-face{font-family:Inter;src:url(assets/Inter.woff2) format("woff2");font-weight:100 900}
+@font-face{font-family:SpaceGrotesk;src:url(assets/SpaceGrotesk.woff2) format("woff2");font-weight:300 700}
+:root{--ink:#0b0b0e;--panel:#15151b;--line:#2b2b37;--fg:#f5f5f7;--muted:#b4b4c3;--blaze:#ff5a1f;--blaze-deep:#a8350b;--volt:#22c7ff;--gold:#ffd23f;--ok:#3ddc84;--paper:#ffffff;--text:#1c1c24;--sub:#5b5b6b;--rule:#e4e4ea;--tint:#f6f6f9}
+@page{size:A4;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#777}
+body{font-family:Inter,system-ui,sans-serif;color:var(--text);font-size:10pt;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:210mm;height:297mm;background:var(--paper);position:relative;overflow:hidden;margin:0 auto 8mm;padding:16mm 15mm 18mm;page-break-after:always;break-after:page}
+@media print{html,body{background:none}.page{margin:0}}
+.page:last-child{page-break-after:auto;break-after:auto}
+.top{display:flex;justify-content:space-between;align-items:center;font-family:SpaceGrotesk;font-size:7.5pt;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);border-bottom:1px solid var(--rule);padding-bottom:3mm;margin-bottom:6mm}
+.top b{font-family:Bungee;font-weight:normal;letter-spacing:.02em;color:var(--ink);font-size:9pt}.top b span{color:var(--blaze)}
+.foot{position:absolute;left:15mm;right:15mm;bottom:9mm;display:flex;justify-content:space-between;font-size:7.5pt;color:var(--sub);border-top:1px solid var(--rule);padding-top:2.5mm}
+.kicker{font-family:SpaceGrotesk;font-weight:700;font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:var(--blaze);margin:0 0 1.5mm}
+h1,h2,h3{font-family:Bungee;font-weight:normal;color:var(--ink);margin:0}
+h2{font-size:21pt;line-height:1.05;margin-bottom:4mm}
+h3{font-size:11pt;margin:5mm 0 2mm;letter-spacing:.01em}
+p{margin:0 0 2.6mm}
+.lead{font-size:11.5pt;line-height:1.5;color:#2a2a34}
+.muted{color:var(--sub)}
+.small{font-size:8.5pt}
+.cap{font-size:7.8pt;color:var(--sub);margin-top:1.5mm;line-height:1.35}
+img{display:block;max-width:100%}
+.shot{width:100%;border-radius:2.5mm;border:1px solid #d9d9e0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm}
+.card{background:var(--tint);border:1px solid var(--rule);border-radius:2.5mm;padding:4mm}
+.card h4{font-family:SpaceGrotesk;font-size:10pt;margin:0 0 1.2mm;color:var(--ink)}
+.card p{font-size:8.8pt;margin:0}
+ul{margin:0 0 2.6mm;padding-left:4.5mm}li{margin:0 0 1.1mm}
+.tag{display:inline-block;font-family:SpaceGrotesk;font-weight:700;font-size:6.8pt;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);color:var(--ink);border-radius:1mm;padding:.4mm 1.6mm;margin:0 1mm 1mm 0;background:#fff}
+.tag.o{background:var(--blaze);border-color:var(--blaze);color:#fff}.tag.g{background:var(--gold);border-color:var(--gold)}.tag.v{background:var(--volt);border-color:var(--volt);color:#00141c}
+table{width:100%;border-collapse:collapse;font-size:8.2pt}
+th{font-family:SpaceGrotesk;text-align:left;font-size:7.6pt;letter-spacing:.06em;text-transform:uppercase;background:var(--ink);color:#fff;padding:2mm 2.2mm}
+td{padding:1.6mm 2.2mm;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:nth-child(even) td{background:var(--tint)}
+td b{color:var(--ink)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.86em;background:#efeff4;border-radius:1mm;padding:0 1mm;color:#2b2b37}
+.num{font-family:Bungee;font-size:18pt;color:var(--blaze);line-height:1}
+.stat{border-left:1.2mm solid var(--blaze);padding:1mm 0 1mm 3mm}
+.stat .l{font-size:8pt;color:var(--sub);margin-top:1mm}
+.callout{border-left:1.2mm solid var(--gold);background:#fffaf0;padding:3mm 4mm;border-radius:0 2mm 2mm 0;font-size:9pt;margin:3mm 0}
+/* cover */
+.cover{background:var(--ink);color:var(--fg);padding:16mm 15mm}
+.cover .brand{font-family:Bungee;font-size:13pt;letter-spacing:.02em}.cover .brand span{color:var(--blaze)}
+.cover .ev{font-family:SpaceGrotesk;font-size:8pt;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.cover h1{font-size:42pt;line-height:.95;color:var(--fg);margin:8mm 0 3mm}
+.cover h1 em{font-style:normal;color:var(--blaze)}
+.cover .sub{font-size:12pt;color:var(--muted);max-width:165mm;line-height:1.5}
+.cover .sub b{color:var(--fg)}
+.cover .hero{margin-top:6mm;border-radius:3mm;border:1px solid var(--line);width:100%;height:auto}
+.cover .roster{display:grid;grid-template-columns:repeat(5,1fr);gap:2.5mm;margin-top:5mm}
+.cover .roster div{background:var(--panel);border:1px solid var(--line);border-radius:2mm;overflow:hidden}
+.cover .roster img{width:100%;aspect-ratio:1/1;object-fit:cover}
+.cover .roster span{display:block;font-family:Bungee;font-size:7pt;padding:1.4mm 2mm;color:var(--fg)}
+.cover .meta{position:absolute;left:15mm;right:15mm;bottom:14mm;display:grid;grid-template-columns:1fr 0.75fr 1.55fr;gap:5mm;border-top:1px solid var(--line);padding-top:5mm;font-size:8.6pt;color:var(--muted)}
+.cover .meta b{display:block;font-family:SpaceGrotesk;font-size:7pt;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:1mm}
+.cover .meta span{color:var(--fg)}
+.cover .pw{margin-top:5mm}.cover .pw .tag{background:transparent;color:var(--fg);border-color:var(--line)}
+.cover .pw .tag.o{background:var(--blaze);color:#fff;border-color:var(--blaze)}
+/* flow */
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:2.5mm;margin:2mm 0 5mm}
+.flow .s{background:var(--ink);color:var(--fg);border-radius:2.5mm;padding:3.2mm;position:relative}
+.flow .s .n{font-family:Bungee;color:var(--blaze);font-size:15pt;line-height:1}
+.flow .s h4{font-family:Bungee;font-weight:normal;font-size:9pt;margin:1.5mm 0 1mm}
+.flow .s p{font-size:7.4pt;color:var(--muted);margin:0;line-height:1.35}
+.flow .s .t{margin-top:2mm}.flow .s .tag{background:transparent;color:var(--gold);border-color:#3a3a48;font-size:6pt}
+.stages{display:flex;gap:1.4mm;margin:2mm 0 1mm;flex-wrap:nowrap}
+.stages div{flex:1;text-align:center;font-family:SpaceGrotesk;font-weight:700;font-size:7.4pt;padding:2mm 1mm;border-radius:1.5mm;background:var(--tint);border:1px solid var(--rule)}
+.stages div small{display:block;font-weight:400;font-size:6.6pt;color:var(--sub);margin-top:.6mm}
+.stages div.a{background:var(--blaze);border-color:var(--blaze);color:#fff}.stages div.a small{color:#ffe3d6}
+.ba{display:grid;grid-template-columns:22mm repeat(3,1fr);gap:2mm;align-items:center;margin-bottom:2mm}
+.ba img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:1.5mm;border:1px solid var(--rule)}
+.ba .nm{font-family:Bungee;font-size:8pt;line-height:1.15}.ba .nm small{display:block;font-family:Inter;font-size:7pt;color:var(--sub)}
+.bahead{display:grid;grid-template-columns:22mm repeat(3,1fr);gap:2mm;font-family:SpaceGrotesk;font-weight:700;font-size:7pt;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);margin-bottom:1.5mm}
+.bagrid{display:grid;grid-template-columns:17mm repeat(5,1fr);gap:2mm;align-items:center;margin:3mm 0 2mm}.bagrid img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:1.5mm;border:1px solid var(--rule)}.bagrid .nm{font-family:Bungee;font-size:8pt;line-height:1.15;align-self:end}.bagrid .nm small{display:block;font-family:Inter;font-size:6.8pt;color:var(--sub);margin-top:.5mm}.bagrid .rl{font-family:SpaceGrotesk;font-weight:700;font-size:7pt;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);line-height:1.25}
+.ok{color:#0f8a4a;font-weight:700}
+.links td:first-child{width:45mm;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 · COVER ============ -->
+<section class="page cover">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="brand">ANYTHING<span>FIGHTER</span></div>
+    <div class="ev">Manycore Aholo Global 3D AI Hackathon · Project report</div>
+  </div>
+  <h1>Snap anything.<br><em>Fight everything.</em></h1>
+  <p class="sub">One photo of any object becomes a <b>rigged, animated 3D fighter</b> with <b>Aholo Lux3D</b>, then brawls in an AI-generated <b>SpatialGen</b> world or a 3D Gaussian-splat scan of <b>your own room</b> (Aholo Reality, rendered with the Aholo Viewer). <b>RenderCloud</b> shoots each fighter's cinematic KO poster.</p>
+  <img class="hero" src="assets/cover-hero.jpg" alt="Toast Master vs Prickly Pete in the SpatialGen Toy Shop at Midnight arena">
+  <div class="roster">
+    <div><img src="assets/mug-poster.jpg"><span>Mug Shot</span></div>
+    <div><img src="assets/sneaker-poster.jpg"><span>Sole Survivor</span></div>
+    <div><img src="assets/duck-poster.jpg"><span>Quack Attack</span></div>
+    <div><img src="assets/toaster-poster.jpg"><span>Toast Master</span></div>
+    <div><img src="assets/cactus-poster.jpg"><span>Prickly Pete</span></div>
+  </div>
+  <div class="pw"><span class="tag o">Powered by Aholo</span><span class="tag">Lux3D</span><span class="tag">SpatialGen</span><span class="tag">Reality</span><span class="tag">Aholo Viewer</span><span class="tag">RenderCloud</span><span class="tag">Asset (OUS)</span><span class="tag">Official TypeScript SDKs</span></div>
+  <div class="meta">
+    <div><b>Team</b><span>Gold Tek</span> (solo)<br><span>Eromonsele Michael</span><br>GitHub: <span>AshThunder</span></div>
+    <div><b>Track</b><span>Gaming</span><br><b style="margin-top:2.5mm">Report date</b><span>13 November 2026</span></div>
+    <div><b>Links</b>Live demo: <span>anything-fighter.vercel.app</span><br>Gallery: <span>anything-fighter.vercel.app/gallery</span><br>Source: <span>github.com/AshThunder/anything-fighter</span></div>
+  </div>
+</section>
+
+<!-- ============ PAGE 2 · SUMMARY + IDEA ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>01 · Summary &amp; idea</span></div>
+  <p class="kicker">Executive summary</p>
+  <h2>A fighting game whose roster is the whole world</h2>
+  <p class="lead" style="font-size:10.4pt">Anything Fighter is a browser fighting game where the player supplies the characters. Point a phone at a mug, a sneaker or a rubber duck, press <b>Forge</b>, and a chain of Aholo services turns that single photo into a full-body fighter concept, a textured PBR mesh, a humanoid skeleton and a set of retargeted fight moves. A few minutes later the new fighter is in the roster, ready to fight the CPU, a friend on the same keyboard, or any other fighter in the gallery, inside an Aholo-generated 3D world.</p>
+  <p>Aholo is not an add-on here. It is the content pipeline: every fighter, every 3D arena, the room-scan stage and every KO poster comes from Manycore's tools, called through the official <code>@manycore/aholo-sdk-*</code> TypeScript packages. Everything else is built around them so the player only sees <i>photo in, fighter out</i>.</p>
+
+  <div class="grid3" style="margin:3mm 0 3mm">
+    <div class="stat"><div class="num">1 photo</div><div class="l">is all a player provides to forge a fighter</div></div>
+    <div class="stat"><div class="num">6</div><div class="l">Aholo services in the live product (Asset/OUS, Lux3D, SpatialGen, Reality, Viewer, RenderCloud)</div></div>
+    <div class="stat"><div class="num">10</div><div class="l">Lux3D-retargeted move clips per rigged fighter (idle, walk, jab, cross, hook, block, 2× hit, KO, victory)</div></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h3>The problem</h3>
+      <p>Fighting games live or die by their roster, and every character normally costs weeks of concept art, modelling, rigging and animation. Players can pick a costume, but never bring <i>their own</i> character, and certainly not the coffee mug on their desk.</p>
+      <p>Generative 3D has made single assets cheap, but a playable character needs much more than a mesh: it needs a humanoid body, a skeleton, animation that fits that skeleton, and a stage to fight in. Stitching that together by hand is still a studio job.</p>
+    </div>
+    <div>
+      <h3>The idea</h3>
+      <p>Use Aholo's 3D AI stack as a <b>character and stage factory</b> that runs while the player waits:</p>
+      <ul>
+        <li><b>Lux3D</b> re-imagines any object as a humanoid fighter, builds the mesh, rigs it and retargets preset fight moves.</li>
+        <li><b>SpatialGen</b> generates themed 3DGS arenas from text; <b>Reality</b> rebuilds the player's room from a phone video.</li>
+        <li><b>Aholo Viewer</b> renders those splats live behind the fight; <b>RenderCloud</b> path-traces a KO poster.</li>
+      </ul>
+      <p>The result is a game where the roster grows with every photo, and every player has a fighter nobody else has.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:3mm">What a judge can do in two minutes</h3>
+  <table>
+    <tr><th style="width:8mm">#</th><th>Action</th><th>Where</th></tr>
+    <tr><td>1</td><td>Pick two starter fighters (each forged by Lux3D from one photo) and a SpatialGen or Reality arena, then press <b>FIGHT!</b></td><td>Home → Select fighter → Select stage</td></tr>
+    <tr><td>2</td><td>Play combos, the special and the super; try 2-player on one keyboard or the touch pad on a phone</td><td><code>/fight</code></td></tr>
+    <tr><td>3</td><td>See every fighter's before → after: source photo, Lux3D concept, RenderCloud poster, live 3D turntable</td><td><code>/gallery</code></td></tr>
+    <tr><td>4</td><td>Forge a fighter from your own photo and spar with a practice partner while it forges</td><td>Home → Forge a fighter</td></tr>
+  </table>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>2</span></div>
+</section>
+
+<!-- ============ PAGE 3 · HOW IT WORKS ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>02 · How it works</span></div>
+  <p class="kicker">Player flow</p>
+  <h2>Snap → forge → pick → fight → share</h2>
+  <div class="flow" style="margin-bottom:4mm">
+    <div class="s"><div class="n">1</div><h4>Snap</h4><p>Take or upload a photo of any object and name it. Photo sharing is <b>off</b> by default.</p><div class="t"><span class="tag">Asset / OUS</span></div></div>
+    <div class="s"><div class="n">2</div><h4>Forge</h4><p>Each Aholo stage lights up as it finishes; spar with a partner while you wait.</p><div class="t"><span class="tag">Lux3D</span><span class="tag">R.Cloud</span></div></div>
+    <div class="s"><div class="n">3</div><h4>Pick</h4><p>YOU / CPU (or P1 / P2) slots, 3D versus preview, CPU level, stage.</p><div class="t"><span class="tag">SpatialGen</span><span class="tag">Reality</span></div></div>
+    <div class="s"><div class="n">4</div><h4>Fight</h4><p>Rigged fighters move with their Lux3D clips over an Aholo Viewer 3DGS backdrop.</p><div class="t"><span class="tag">Aholo Viewer</span></div></div>
+    <div class="s"><div class="n">5</div><h4>Share</h4><p>Download a KO card and a clip of the fight; browse every fighter in the gallery.</p><div class="t"><span class="tag">RenderCloud</span></div></div>
+  </div>
+
+  <div class="grid2" style="grid-template-columns:0.85fr 1.15fr;align-items:start">
+    <div><img class="shot" src="assets/forge-panel.jpg"><div class="cap"><b>Forge panel.</b> Snap or upload, one big FORGE button, optional printable export, opt-in photo sharing with a consent attestation, and the "Powered by Aholo" strip listing the services that will build this fighter.</div></div>
+    <div><img class="shot" src="assets/picker-vs.jpg"><div class="cap"><b>Fighter select.</b> Slot-based picking for you and the CPU, a live 3D versus preview of the two Lux3D fighters, and the Aholo services that built the selected fighter.</div></div>
+  </div>
+
+  <h3>The forge, stage by stage</h3>
+  <div class="stages">
+    <div class="a">upload<small>OUS</small></div><div class="a">concept<small>multimodal→image</small></div><div class="a">mesh<small>img-to-3D</small></div><div class="a">rig<small>humanoid auto-rig</small></div><div class="a">retarget<small>10 moves</small></div><div class="a">poster<small>RenderCloud</small></div><div>export<small>STL/3MF/USDZ, opt.</small></div><div>done<small>fighter.json</small></div>
+  </div>
+  <p class="small muted" style="margin-top:2mm">Stages as named in <code>lib/aholo.ts</code>. Poster and print export are non-fatal: a failure, or a poster taking over 8 minutes, moves the job on.</p>
+  <ul class="small">
+    <li><b>Concept.</b> Lux3D multimodal-to-image turns the object photo into a full-body humanoid fighting-game character in a T-pose, so that a mug can actually take a skeleton.</li>
+    <li><b>Mesh.</b> Lux3D image-to-3D, <code>G1-Turbo</code>, PBR textures, GLB output, requested as a 1.8 m character (<code>customSize: 1800</code>).</li>
+    <li><b>Rig + retarget.</b> Humanoid auto-rig returns a Mixamo-named 52-joint skeleton; one retarget task applies 10 official presets. Each clip is stripped to skeleton + animation for the browser.</li>
+    <li><b>Rescue path.</b> If Lux3D answers <code>RIG_ELIGIBILITY_FAILED</code>, the app re-rigs once on a normalised 1.8 m copy of the same mesh. If it still refuses, the fighter ships <b>freestyle</b> (unrigged Lux3D mesh, procedural moves) instead of dead-ending.</li>
+  </ul>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>3</span></div>
+</section>
+
+<!-- ============ PAGE 4 · AHOLO TOOL TABLE ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>03 · Use of Manycore / Aholo tools</span></div>
+  <p class="kicker">Aholo at the core</p>
+  <h2>Every Aholo tool, and what it does in the game</h2>
+  <p>All Aholo calls in the deployed app go through Manycore's official TypeScript SDKs, created once in the server-only module <code>lib/aholo-sdk.ts</code> (global region <code>com</code>, <code>https://api.aholo.ai</code>). RenderCloud has no SDK, so its OpenAPI routes are sent through the official <code>@manycore/aholo-sdk-core</code> gateway client.</p>
+  <table>
+    <tr><th style="width:30mm">Aholo tool</th><th style="width:47mm">SDK call(s)</th><th>Role in Anything Fighter</th><th style="width:22mm">Credits*</th></tr>
+    <tr><td><b>Asset upload (OUS)</b><br><span class="small muted">aholo-sdk-asset</span></td><td><code>uploadBuffer</code>, <code>getUploadToken</code>; browser transfer via <code>OusHttpClient</code> (sdk-core)</td><td>Uploads the player's photo and the posed GLBs from the server; room-scan videos go straight from the browser to OUS with a short-lived token</td><td>—</td></tr>
+    <tr><td><b>Lux3D multimodal-to-image</b></td><td><code>multimodalToImage.create</code></td><td>Object photo → full-body humanoid fighter concept (T-pose) so any object can be rigged</td><td>~12</td></tr>
+    <tr><td><b>Lux3D image-to-3D</b></td><td><code>imgTo3d.create</code> (G1-Turbo, PBR, GLB)</td><td>Concept → textured mesh at character scale (1.8 m)</td><td>~1</td></tr>
+    <tr><td><b>Lux3D humanoid auto-rig</b></td><td><code>humanoidAutoRig.create</code></td><td>Mixamo-named 52-joint skeleton on the generated mesh</td><td>~15</td></tr>
+    <tr><td><b>Lux3D animation retarget</b></td><td><code>humanoidAnimationRetarget.create</code></td><td>10 preset moves per fighter: <code>Idle_Loop</code>, <code>Walk_Loop</code>, <code>Punch_Jab</code>, <code>Punch_Cross</code>, <code>Melee_Hook</code> (kick), <code>Sword_Block</code>, <code>Hit_Chest</code>, <code>Hit_Knockback</code>, <code>Death01</code>, <code>Dance_Loop</code></td><td>~3 / clip</td></tr>
+    <tr><td><b>Lux3D multi-format export</b></td><td><code>multiFormatExport.create</code></td><td>Optional printable STL / 3MF / USDZ of your fighter (checkbox, off by default)</td><td>—</td></tr>
+    <tr><td><b>Lux3D tasks</b></td><td><code>tasks.retrieve</code></td><td>One status check per client poll drives the forge state machine</td><td>—</td></tr>
+    <tr><td><b>SpatialGen</b><br><span class="small muted">aholo-sdk-world</span></td><td><code>generations.create</code>, <code>retrieve</code>, <code>list</code></td><td>Text → 3D Gaussian-splat arenas + panoramas: Kitchen Colosseum, Toy Shop at Midnight, Rooftop Dojo at Sunset</td><td>10 / world</td></tr>
+    <tr><td><b>Reality</b><br><span class="small muted">aholo-sdk-world</span></td><td><code>reconstructions.create</code>, <code>retrieve</code></td><td>"Fight in your room": a 10–20 s phone video (or 20+ photos) → playable 3DGS arena (Flash quality)</td><td>20 / scan</td></tr>
+    <tr><td><b>Aholo Viewer</b></td><td><code>@manycore/aholo-viewer</code></td><td>Renders the SPZ/SOG splat arenas under the transparent React Three Fiber fight canvas, camera synced every frame</td><td>—</td></tr>
+    <tr><td><b>RenderCloud</b><br><span class="small muted">OpenAPI via sdk-core</span></td><td>mesh-upload-process task, <code>/rendercloud/v1/jobs</code></td><td>Path-traced KO / victory poster: mid-jab pose baked from the punch clip, USD scene with studio backdrop and lights</td><td>non-fatal stage</td></tr>
+    <tr><td><b>LuxReal</b></td><td>web app (no public API)</td><td>Manual cinematic trailer pack assembled by <code>scripts/luxreal-pack.mjs</code>; not part of the live app</td><td>—</td></tr>
+  </table>
+  <p class="cap">* Approximate credit costs as recorded in the project's handoff notes during development; the Aholo dashboard is authoritative. A full live forge is on the order of <b>~35–60 credits</b>. The hackathon grant was 3,600 credits, which is why live forges are capped by a spend guard (page 10).</p>
+
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>4</span></div>
+</section>
+
+<!-- ============ PAGE 5 · ARCHITECTURE ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>04 · Architecture</span></div>
+  <p class="kicker">System design</p>
+  <h2>Browser · Next.js on Vercel · Aholo cloud</h2>
+  <svg viewBox="0 0 1000 830" width="100%" style="display:block;margin-top:1mm" font-family="Inter, sans-serif">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c1c24"/></marker>
+      <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff5a1f"/></marker>
+    </defs>
+    <!-- column backgrounds -->
+    <rect x="10" y="10" width="300" height="810" rx="14" fill="#f6f6f9" stroke="#e4e4ea"/>
+    <rect x="350" y="10" width="300" height="810" rx="14" fill="#f6f6f9" stroke="#e4e4ea"/>
+    <rect x="690" y="10" width="300" height="810" rx="14" fill="#fff4ee" stroke="#ffd2bf"/>
+    <text x="160" y="42" text-anchor="middle" font-family="Bungee" font-size="17" fill="#0b0b0e">BROWSER</text>
+    <text x="160" y="62" text-anchor="middle" font-size="11.5" fill="#5b5b6b">phone or desktop · no API key</text>
+    <text x="500" y="42" text-anchor="middle" font-family="Bungee" font-size="17" fill="#0b0b0e">NEXT.JS 16 ON VERCEL</text>
+    <text x="500" y="62" text-anchor="middle" font-size="11.5" fill="#5b5b6b">server-only lib/aholo-sdk.ts holds the key</text>
+    <text x="840" y="42" text-anchor="middle" font-family="Bungee" font-size="17" fill="#ff5a1f">AHOLO / MANYCORE</text>
+    <text x="840" y="62" text-anchor="middle" font-size="11.5" fill="#5b5b6b">official @manycore/aholo-sdk-*</text>
+
+    <g font-size="12" fill="#1c1c24">
+    <!-- Browser boxes -->
+    <rect x="25" y="80" width="270" height="92" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="38" y="102" font-weight="700" font-size="13.5">Home · Forge panel</text>
+    <text x="38" y="122">Snap / upload one photo + name</text>
+    <text x="38" y="140">MediaPipe face gate (opt-in share)</text>
+    <text x="38" y="158">Fighter + stage select, 1P / 2P</text>
+
+    <rect x="25" y="190" width="270" height="78" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="38" y="212" font-weight="700" font-size="13.5">/forge/[id]</text>
+    <text x="38" y="232">Self-rescheduling poll (~3.5 s)</text>
+    <text x="38" y="250">Practice fight while you wait</text>
+
+    <rect x="25" y="420" width="270" height="92" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="38" y="442" font-weight="700" font-size="13.5">Fight in your room</text>
+    <text x="38" y="462">Video or 20+ photos</text>
+    <text x="38" y="480">Upload via official OusHttpClient</text>
+    <text x="38" y="498">with a short-lived token</text>
+
+    <rect x="25" y="555" width="270" height="130" rx="9" fill="#0b0b0e"/>
+    <text x="38" y="578" font-weight="700" font-size="13.5" fill="#fff">/fight</text>
+    <rect x="38" y="590" width="244" height="36" rx="6" fill="#22c7ff"/>
+    <text x="48" y="613" fill="#00141c" font-weight="600">R3F canvas: fighters, HUD, sim</text>
+    <rect x="38" y="634" width="244" height="36" rx="6" fill="#ff5a1f"/>
+    <text x="48" y="657" fill="#fff" font-weight="600">Aholo Viewer canvas: 3DGS arena</text>
+
+    <rect x="25" y="710" width="270" height="92" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="38" y="732" font-weight="700" font-size="13.5">/gallery · /moderation</text>
+    <text x="38" y="752">Before → after cards, 3D turntable</text>
+    <text x="38" y="770">Report a card · owner queue</text>
+    <text x="38" y="788">KO card PNG + fight clip download</text>
+
+    <!-- Server boxes -->
+    <rect x="365" y="80" width="270" height="290" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="378" y="102" font-weight="700" font-size="13.5">/api/pipeline → lib/aholo.ts</text>
+    <text x="378" y="124">1. Spend guard (per-IP + global/day)</text>
+    <text x="378" y="144">2. Poll-driven state machine:</text>
+    <text x="390" y="162">one SDK create or one</text>
+    <text x="390" y="180">tasks.retrieve per GET</text>
+    <text x="378" y="200">3. Rescue re-rig / freestyle fallback</text>
+    <text x="378" y="220">4. Rehost results (URLs expire ~2 h)</text>
+    <text x="378" y="240">5. gltf-transform: WebP textures,</text>
+    <text x="390" y="258">clips stripped to skeleton + anim</text>
+    <text x="378" y="278">6. USDA poster scene (lib/poster-usda)</text>
+    <text x="378" y="298">7. Mock mode when no key</text>
+    <text x="378" y="318">8. publicJob() strips signed URLs</text>
+    <text x="378" y="338">Advance lock 150 s · retry ≤ 3</text>
+    <text x="378" y="356" fill="#5b5b6b">transient errors retried silently</text>
+
+    <rect x="365" y="420" width="270" height="92" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="378" y="442" font-weight="700" font-size="13.5">/api/room/token · /api/room</text>
+    <text x="378" y="462">assetClient().getUploadToken()</text>
+    <text x="378" y="480">world.reconstructions.create</text>
+    <text x="378" y="498">with the OUS asset URLs</text>
+
+    <rect x="365" y="555" width="270" height="130" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="378" y="578" font-weight="700" font-size="13.5">/api/arenas · /api/assets</text>
+    <text x="378" y="598">World status + queue guard</text>
+    <text x="378" y="616">Signed-URL redirects for splats</text>
+    <text x="378" y="634">Splat auto-fit (floor, camera, scale)</text>
+    <text x="378" y="652">Private-photo filter, no-store</text>
+    <text x="378" y="670">Fighter GLBs + clips</text>
+
+    <rect x="365" y="710" width="270" height="92" rx="9" fill="#fff" stroke="#1c1c24" stroke-width="1.5"/>
+    <text x="378" y="732" font-weight="700" font-size="13.5">Storage (no database)</text>
+    <text x="378" y="752">Starter roster in the deployment</text>
+    <text x="378" y="770">Runtime Cache + /tmp for jobs</text>
+    <text x="378" y="788">Private Vercel Blob fighter packs</text>
+
+    <!-- Aholo boxes -->
+    <rect x="705" y="80" width="270" height="56" rx="9" fill="#fff" stroke="#ff5a1f" stroke-width="2"/>
+    <text x="718" y="102" font-weight="700" font-size="13.5">Asset upload (OUS)</text>
+    <text x="718" y="122">uploadBuffer · photo, posed GLBs</text>
+
+    <rect x="705" y="150" width="270" height="148" rx="9" fill="#ff5a1f"/>
+    <text x="718" y="173" font-weight="700" font-size="14" fill="#fff">Lux3D</text>
+    <g fill="#fff"><text x="718" y="194">• multimodal-to-image (concept)</text>
+    <text x="718" y="213">• img-to-3D G1-Turbo, PBR</text>
+    <text x="718" y="232">• humanoid auto-rig</text>
+    <text x="718" y="251">• animation retarget (10 presets)</text>
+    <text x="718" y="270">• multi-format export (opt.)</text>
+    <text x="718" y="289">• tasks.retrieve</text></g>
+
+    <rect x="705" y="312" width="270" height="58" rx="9" fill="#fff" stroke="#ff5a1f" stroke-width="2"/>
+    <text x="718" y="334" font-weight="700" font-size="13.5">RenderCloud</text>
+    <text x="718" y="354">mesh ingest + USD render job</text>
+
+    <rect x="705" y="420" width="270" height="92" rx="9" fill="#fff" stroke="#ff5a1f" stroke-width="2"/>
+    <text x="718" y="442" font-weight="700" font-size="13.5">Reality (+ OUS storage)</text>
+    <text x="718" y="462">Phone video / photos → 3DGS</text>
+    <text x="718" y="480">"Fight in your room" (Flash)</text>
+    <text x="718" y="498">cover still for the stage card</text>
+
+    <rect x="705" y="555" width="270" height="130" rx="9" fill="#fff" stroke="#ff5a1f" stroke-width="2"/>
+    <text x="718" y="578" font-weight="700" font-size="13.5">SpatialGen + world CDN</text>
+    <text x="718" y="598">Text → 3DGS world + panorama</text>
+    <text x="718" y="616">Kitchen Colosseum · Toy Shop</text>
+    <text x="718" y="634">Rooftop Dojo · (Reality) My Room</text>
+    <text x="718" y="652">SPZ splats on signed CDN URLs</text>
+    <text x="718" y="670">one world job at a time</text>
+
+    <rect x="705" y="710" width="270" height="92" rx="9" fill="#fff" stroke="#e4e4ea" stroke-dasharray="5 4"/>
+    <text x="718" y="732" font-weight="700" font-size="13.5">LuxReal (manual)</text>
+    <text x="718" y="752">No public video API: posed GLBs,</text>
+    <text x="718" y="770">posters and panoramas packed for</text>
+    <text x="718" y="788">a manual cinematic trailer</text>
+    </g>
+
+    <!-- arrows -->
+    <g stroke="#1c1c24" stroke-width="1.8" fill="none">
+      <line x1="295" y1="126" x2="363" y2="126" marker-end="url(#ar)"/>
+      <line x1="297" y1="229" x2="363" y2="229" marker-end="url(#ar)" marker-start="url(#ar)"/>
+      <line x1="297" y1="466" x2="363" y2="466" marker-end="url(#ar)" marker-start="url(#ar)"/>
+      <line x1="363" y1="620" x2="297" y2="620" marker-end="url(#ar)"/>
+      <line x1="297" y1="756" x2="363" y2="756" marker-end="url(#ar)"/>
+      <line x1="500" y1="372" x2="500" y2="418" stroke-dasharray="3 3"/>
+    </g>
+    <g stroke="#ff5a1f" stroke-width="2.2" fill="none">
+      <line x1="635" y1="108" x2="703" y2="108" marker-end="url(#ao)"/>
+      <line x1="635" y1="224" x2="703" y2="224" marker-end="url(#ao)" marker-start="url(#ao)"/>
+      <line x1="635" y1="341" x2="703" y2="341" marker-end="url(#ao)"/>
+      <line x1="635" y1="485" x2="703" y2="485" marker-end="url(#ao)"/>
+      <line x1="635" y1="600" x2="703" y2="600" marker-end="url(#ao)" marker-start="url(#ao)"/>
+      <path d="M160,418 L160,396 L840,396 L840,418" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+      <path d="M703,665 L660,665 L660,700 L330,700 L330,650 L284,650" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+    </g>
+    <g font-size="10.5" fill="#5b5b6b">
+      <text x="300" y="119">photo</text>
+      <text x="300" y="222">poll</text>
+      <text x="300" y="459">token</text>
+      <text x="300" y="613">GLBs</text>
+      <text x="300" y="749">list</text>
+      <text x="640" y="203" fill="#a8350b" font-size="9.5">create /</text><text x="640" y="215" fill="#a8350b" font-size="9.5">retrieve</text>
+      <text x="640" y="579" fill="#a8350b" font-size="9.5">list /</text><text x="640" y="591" fill="#a8350b" font-size="9.5">retrieve</text>
+      <rect x="335" y="385" width="330" height="22" rx="4" fill="#fff"/>
+      <text x="500" y="400" text-anchor="middle" fill="#a8350b" font-weight="700" font-size="11.5">direct browser → OUS upload (bypasses Vercel)</text>
+      <rect x="395" y="691" width="210" height="18" rx="4" fill="#f6f6f9"/>
+      <text x="500" y="704" text-anchor="middle" fill="#a8350b" font-weight="600">SPZ splat streamed to the Viewer</text>
+    </g>
+  </svg>
+  <p class="cap">Solid arrows: HTTP calls between the browser and the app's routes; orange arrows: calls into Aholo through the official SDKs (RenderCloud via the sdk-core gateway client). The API key exists only on the server; the browser only ever receives a short-lived OUS upload token.</p>
+  <h3 style="margin-top:3mm">How the integration follows Manycore's guidance</h3>
+  <div class="grid2">
+    <ul class="small">
+      <li><b>SDKs, not hand-written HTTP</b> for Asset, World and Lux3D, as Manycore's <code>llms.txt</code> recommends. SDK errors (<code>RateLimitError</code>, <code>BusinessError</code>…) are mapped to app errors; 429 / 5xx / network are retried on the next poll.</li>
+      <li><b>Async create → poll</b>, exactly as the World and Lux3D APIs are designed, but one step per request (page 11).</li>
+    </ul>
+    <ul class="small">
+      <li><b>Visible in the product:</b> a "Powered by Aholo" strip on the forge panel, the live forge page (lights up per stage), the select screen, the VS splash and every gallery card lists the services that actually built that fighter.</li>
+      <li><b>No key, still demoable:</b> without an API key every pipeline runs in a clearly labelled mock mode.</li>
+    </ul>
+  </div>
+  <p class="small" style="margin-top:2mm"><b>Stack:</b> Next.js 16 (App Router, TypeScript, Tailwind 4) · React 19 · React Three Fiber + drei + three.js · Zustand · <code>@manycore/aholo-sdk-asset</code> / <code>-world</code> / <code>-lux3d</code> / <code>-core</code> · <code>@manycore/aholo-viewer</code> · gltf-transform + meshoptimizer · sharp · MediaPipe Tasks Vision (face gate) · Vercel Functions, Runtime Cache and Blob · WebAudio-synthesised sound.</p>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>5</span></div>
+</section>
+
+<!-- ============ PAGE 6 · FIGHTERS BEFORE/AFTER ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>05 · The forge in practice</span></div>
+  <p class="kicker">Asset iterations</p>
+  <h2>From kitchen object to contender</h2>
+  <p>The five starter fighters were forged with the same Lux3D chain the live app uses (source photos were themselves AI-generated for this project; no third-party photos). Each row is one photo, its Lux3D concept and its RenderCloud poster, the same before → after shown on every gallery card.</p>
+  <div class="bagrid">
+    <div class="rl"></div><div class="nm">Mug Shot<small>"Fully caffeinated. Zero chill."</small></div><div class="nm">Sole Survivor<small>"Laces up. Lights out."</small></div><div class="nm">Quack Attack<small>"Bath-time is over."</small></div><div class="nm">Toast Master<small>"Pops up. Knocks down."</small></div><div class="nm">Prickly Pete<small>"Hugs not recommended."</small></div>
+    <div class="rl">Photo<br>(input)</div><img src="assets/mug-photo.jpg"><img src="assets/sneaker-photo.jpg"><img src="assets/duck-photo.jpg"><img src="assets/toaster-photo.jpg"><img src="assets/cactus-photo.jpg">
+    <div class="rl">Lux3D<br>concept</div><img src="assets/mug-concept.jpg"><img src="assets/sneaker-concept.jpg"><img src="assets/duck-concept.jpg"><img src="assets/toaster-concept.jpg"><img src="assets/cactus-concept.jpg">
+    <div class="rl">Render&shy;Cloud<br>poster</div><img src="assets/mug-poster.jpg"><img src="assets/sneaker-poster.jpg"><img src="assets/duck-poster.jpg"><img src="assets/toaster-poster.jpg"><img src="assets/cactus-poster.jpg">
+  </div>
+  <div class="grid3" style="margin-top:4mm">
+    <div class="card"><h4>What we learned from Lux3D</h4><p>Asking multimodal-to-image for a <b>full-body humanoid in a T-pose</b> is what makes rigging work on non-humanoid objects. Requesting a <b>1.8 m character</b> (instead of letting size be predicted from the object, which sized a sneaker like a 30 cm figurine) was the fix for rig eligibility failures.</p></div>
+    <div class="card"><h4>Rig &amp; retarget findings</h4><p>The rig is a Mixamo-named 52-joint skeleton. Each retargeted clip GLB repeats the full textured mesh (~22 MB), so the app strips it to skeleton + clip (≈0.05–0.1 MB) and converts fighter textures to WebP (21.8 MB → 3.4 MB in the measured run). The 85 official presets include no kick, so <code>Melee_Hook</code> stands in.</p></div>
+    <div class="card"><h4>How the KO poster is made</h4><p>The app bakes a mid-jab pose from the fighter's own punch clip into a static mesh, uploads it through OUS, runs RenderCloud mesh ingest, builds a USD scene (studio backdrop + lights, <code>lib/poster-usda.ts</code>) and submits an offline path-traced render job. The poster is shown on the VS splash, in the gallery and on the downloadable KO card.</p></div>
+  </div>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>6</span></div>
+</section>
+
+<!-- ============ PAGE 7 · ARENAS ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>06 · Arenas: SpatialGen, Reality, Viewer</span></div>
+  <p class="kicker">3D worlds</p>
+  <h2>Fight in an AI world, or in your own room</h2>
+  <div class="grid2">
+    <div><img class="shot" src="assets/f-rooftop.jpg"><div class="cap"><b>Rooftop Dojo at Sunset</b> (SpatialGen 3DGS world) · Mug Shot vs Quack Attack.</div></div>
+    <div><img class="shot" src="assets/f-room.jpg"><div class="cap"><b>My Room (scan)</b> (Aholo Reality reconstruction) · Sole Survivor vs Mug Shot.</div></div>
+  </div>
+  <div class="grid2" style="margin-top:4mm">
+    <div>
+      <h3 style="margin-top:0">SpatialGen arenas</h3>
+      <p class="small">Three themed worlds were generated from our own text prompts with <code>world.generations.create</code>: <b>Kitchen Colosseum</b>, <b>Toy Shop at Midnight</b> and <b>Rooftop Dojo at Sunset</b>. Each produces a 3DGS splat and a panorama; the panorama becomes the stage-select cover and the fallback backdrop. Finished worlds appear as playable stage cards automatically.</p>
+      <h3>Aholo Reality: "Fight in your room"</h3>
+      <p class="small">The stage select has a builder card: record a slow 10–20 s loop (or choose a video, or 20+ photos), and Aholo Reality rebuilds the room as a playable splat arena (Flash quality, ~20 credits). Files upload <b>directly from the browser to Aholo OUS</b>; the server only mints the upload token and calls <code>world.reconstructions.create</code>. Reality worlds use the official <code>WorldDetail.cover</code> as their card image.</p>
+    </div>
+    <div>
+      <img class="shot" src="assets/room-builder.jpg"><div class="cap"><b>Stage select</b> with the always-visible Reality room builder above the built-in Neon Ring and SpatialGen cards.</div>
+      <h3>Aholo Viewer under React Three Fiber</h3>
+      <p class="small">The Aholo Viewer is its own WebGL engine and cannot live inside an R3F canvas, so the game stacks two canvases: the Viewer renders the splat underneath, and a transparent R3F canvas draws the fighters on top, with the Viewer camera synced from the fight camera every frame.</p>
+    </div>
+  </div>
+  <div class="callout" style="margin:2mm 0">  <b>Making splats fight-ready.</b> <code>lib/splat-fit.ts</code> decodes each SPZ, finds the floor band and the largest floor rectangle, aims the camera down the room's long axis and scales the world so fighters stand on the floor. New worlds are auto-fitted server-side. If a splat cannot load on a device, the fight swaps to the world's panorama, then to the Neon Ring, and keeps going.</div>
+  <table style="margin-top:1mm;font-size:7.8pt">
+    <tr><th>Arena</th><th>Built with</th><th>Kind</th></tr>
+    <tr><td><b>Kitchen Colosseum</b></td><td>Aholo SpatialGen (text prompt)</td><td>3DGS splat + panorama</td></tr>
+    <tr><td><b>Toy Shop at Midnight</b></td><td>Aholo SpatialGen (text prompt)</td><td>3DGS splat + panorama</td></tr>
+    <tr><td><b>Rooftop Dojo at Sunset</b></td><td>Aholo SpatialGen (text prompt)</td><td>3DGS splat + panorama</td></tr>
+    <tr><td><b>My Room (scan)</b></td><td>Aholo Reality (phone video of a room)</td><td>3DGS splat</td></tr>
+    <tr><td><b>Aholo Sample Splat</b> · <b>Neon Ring</b></td><td>Official Aholo Viewer sample · built-in stage</td><td>always-available fallbacks</td></tr>
+  </table>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>7</span></div>
+</section>
+
+<!-- ============ PAGE 8 · GAMEPLAY ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>07 · Gameplay</span></div>
+  <p class="kicker">Fun &amp; engagement</p>
+  <h2>A real fighting game, not a model viewer</h2>
+  <img class="shot" src="assets/f-vs.jpg" style="height:50mm;object-fit:cover;object-position:center 55%">
+  <div class="cap"><b>Kitchen Colosseum</b> (SpatialGen world) · Mug Shot vs Quack Attack, 1P vs CPU. Before each fight a VS splash slams in both RenderCloud posters and tags each fighter with how it was built (e.g. "Aholo Lux3D starter · retargeted clips").</div>
+  <div class="grid2" style="margin-top:3mm">
+    <div>
+      <h3 style="margin-top:0">Move set</h3>
+      <table>
+        <tr><th>Input</th><th>Move</th></tr>
+        <tr><td><b>P P K</b></td><td>jab → cross → hook string, knockdown</td></tr>
+        <tr><td><b>K P</b></td><td>kick → rush, cancels on hit</td></tr>
+        <tr><td><b>↓ + P / ↓ + K</b></td><td>low punch / sweep (must be crouch-blocked)</td></tr>
+        <tr><td><b>P or K in the air</b></td><td>overhead jump attack (block standing)</td></tr>
+        <tr><td><b>Block just before a hit</b></td><td>parry: attacker stunned, +meter</td></tr>
+        <tr><td><b>Special</b> (U, or back→forward+P)</td><td>armoured dash-strike, knockdown</td></tr>
+        <tr><td><b>Super</b> (I, meter full)</td><td>slow-mo, camera zoom, 3-hit armoured combo</td></tr>
+      </table>
+      <p class="cap">Plus jump and crouch: highs whiff over a crouch; any clean hit on an airborne fighter is an anti-air knockdown. Damage scales down over long combos; counter-hits deal +20 %.</p>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Modes &amp; feel</h3>
+      <ul class="small">
+        <li><b>1P vs CPU</b> with Easy / Normal / Hard. The CPU drives the same inputs as a player: it extends strings, punishes whiffs, parries (Hard), jumps in, sweeps and anti-airs.</li>
+        <li><b>2 players on one keyboard</b>, and <b>practice</b> (infinite time, the partner never attacks), shown while your fighter forges.</li>
+        <li><b>Any fighter vs any fighter:</b> starters, your forged fighter, or one from the gallery ("Fight as" / "Fight vs").</li>
+        <li><b>Arcade presentation:</b> screenpack-style life bars with a lagging damage layer, super meter ring, round timer, combo and hit callouts, hit sparks, screen shake, haptics on phones, K.O. / TIME! stamp, victory panel.</li>
+        <li><b>Freestyle fighters still fight:</b> if Lux3D can't rig a mesh, procedural motion (and a 3-bone arm rig for T-posed meshes) performs every move.</li>
+        <li><b>After the fight:</b> rematch, a 1600×900 KO card with the RenderCloud poster, and a recorded clip (MP4 or WebM) to share manually.</li>
+      </ul>
+      <p class="cap">The rules are covered by <code>npm run test:sim</code>: 18 deterministic checks (strings, scaling, jump arc, crouch, lows, overheads, anti-air, special, super).</p>
+    </div>
+  </div>
+  <h3>Controls</h3>
+  <table>
+    <tr><th></th><th>Move</th><th>Jump / crouch</th><th>Punch</th><th>Kick</th><th>Block</th><th>Special</th><th>Super</th></tr>
+    <tr><td><b>Solo</b></td><td>A / D or ← →</td><td>W, ↑, Space / S, ↓</td><td>J</td><td>K</td><td>L, Shift, C</td><td>U</td><td>I</td></tr>
+    <tr><td><b>2P · P1</b></td><td>A / D</td><td>W / S</td><td>F</td><td>G</td><td>H</td><td>R</td><td>T</td></tr>
+    <tr><td><b>2P · P2</b></td><td>← / →</td><td>↑ / ↓</td><td>K / Num1</td><td>L / Num2</td><td>M / Num0</td><td>O / Num3</td><td>P / Num6</td></tr>
+    <tr><td><b>Touch</b></td><td>◀ ▶</td><td>▲ Jump / ▼ Crouch</td><td>Punch</td><td>Kick</td><td>Block</td><td>Special</td><td>Super (ring)</td></tr>
+  </table>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>8</span></div>
+</section>
+
+<!-- ============ PAGE 9 · GALLERY ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>08 · Gallery &amp; sharing</span></div>
+  <p class="kicker">Gallery &amp; sharing</p>
+  <h2>Every fighter shows its transformation</h2>
+  <p>The gallery (<code>/gallery</code>) is where the Aholo pipeline is most visible. Every fighter, starter or player-forged, gets a card that tells its whole story, so a visitor understands in one glance what Lux3D and RenderCloud did with a single photo.</p>
+  <img class="shot" src="assets/d-gallery-crop.jpg" style="height:90mm;object-fit:cover;object-position:top">
+  <div class="cap"><b>Gallery</b> on desktop: before → after strip (photo | Lux3D concept | RenderCloud poster), the "Powered by Aholo" services that built each fighter, and Fight as / Fight vs / View 3D.</div>
+  <div class="grid3" style="margin-top:4mm">
+    <div class="card"><h4>Before → after</h4><p>Photo, Lux3D concept and RenderCloud poster side by side. A player's photo appears only if they opted in and passed the face gate; otherwise the card says it is kept private and shows concept and poster.</p></div>
+    <div class="card"><h4>Play from the gallery</h4><p><b>Fight as</b> or <b>Fight vs</b> any card, including a friend's freshly forged fighter, or open a live 3D turntable of the rigged Lux3D model.</p></div>
+    <div class="card"><h4>Share outside the game</h4><p>After a fight: a 1600×900 KO card PNG built around the RenderCloud poster and a recorded clip of the fight. Nothing is posted automatically; the player shares it themselves.</p></div>
+  </div>
+  <div class="grid2" style="margin-top:4mm;grid-template-columns:0.9fr 1.1fr">
+    <div><img class="shot" src="assets/report-dialog.jpg"><div class="cap"><b>Report this card</b>: every gallery card can be flagged; reports go to an owner-only moderation queue.</div></div>
+    <div>
+      <h3 style="margin-top:0">Always visible: "Powered by Aholo"</h3>
+      <p class="small">The same services strip appears on the forge panel (planned services), on the live forge page (each service lights up as its stage finishes), on the fighter select screen, on the VS splash and on every gallery card. Fighters are tagged by how they were built, for example "Forged with Lux3D · rig + N Aholo clips" or "Forged with Lux3D · freestyle moves", so judges and players can see exactly which Manycore tools produced what.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>9</span></div>
+</section>
+
+<!-- ============ PAGE 10 · PRIVACY ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>09 · Privacy &amp; safety</span></div>
+  <p class="kicker">Responsible design</p>
+  <h2>Snap anything, but protect the people in it</h2>
+  <p class="lead" style="font-size:10.8pt">"Snap anything" invites photos of people, so the design assumes that will happen. Nothing a player uploads becomes public unless they explicitly ask, attest and pass the face gate, and anyone can flag what does.</p>
+  <div class="grid2" style="grid-template-columns:1.35fr 0.65fr;margin-top:3mm">
+    <table>
+      <tr><th style="width:32mm">Safeguard</th><th>How it works</th></tr>
+      <tr><td><b>Private by default</b></td><td>A player's source photo is never served or listed unless they opt in; thumbnails come from the Lux3D concept or the RenderCloud poster.</td></tr>
+      <tr><td><b>Opt-in + consent</b></td><td>Sharing needs a checkbox <i>and</i> an attestation that the uploader has the right to share and the photo shows no identifiable person without their consent. The choice is recorded at forge time; older forges are never published retroactively.</td></tr>
+      <tr><td><b>Face gate</b></td><td>Aholo's published APIs have no face-detection or moderation endpoint, so the browser runs MediaPipe face detection. A face, or any model error, keeps the photo private (fail closed); the forge itself still runs.</td></tr>
+      <tr><td><b>Report + moderation</b></td><td>Every card has a Report dialog; reports land in an owner-only queue at <code>/moderation</code> that can hide or unpublish a card.</td></tr>
+      <tr><td><b>One-time delete link</b></td><td>When a forge finishes, its creator gets a one-time "Remove from gallery" control backed by a signed token.</td></tr>
+      <tr><td><b>Instant takedown</b></td><td>Shared photos are served with <code>private, no-store</code>, so a removal takes effect immediately rather than lingering in caches.</td></tr>
+      <tr><td><b>No leaked URLs</b></td><td>Job responses strip signed Aholo URLs (including the uploaded photo); the durable Blob store is private.</td></tr>
+      <tr><td><b>Spend guard</b></td><td>Live forges are capped per IP and globally per Africa/Lagos day; past the cap the forge continues as a clearly labelled demo forge (no credits) instead of failing.</td></tr>
+      <tr><td><b>Secrets</b></td><td>The Aholo API key lives only in server-only modules; the browser gets at most a short-lived OUS upload token. Without a key the whole app runs in labelled mock mode.</td></tr>
+    </table>
+    <div>
+      <img class="shot" src="assets/forge-optin-m.jpg"><div class="cap">Forge form on a phone (live site): sharing is off by default and needs the consent attestation.</div>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:5mm"><b>Why the face check runs in the browser.</b> We looked for a moderation or face-detection capability in Aholo's published OpenAPI (Asset, World, Lux3D, RenderCloud, Spatial Understanding) and found none, so the check runs on the player's device before anything can be shared. It only gates <i>public sharing</i>; the photo still goes to Lux3D to build the fighter, and stays private.</div>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>10</span></div>
+</section>
+
+<!-- ============ PAGE 10 · ENGINEERING ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>10 · Engineering challenges</span></div>
+  <p class="kicker">Completeness</p>
+  <h2>Problems we hit, and how we solved them</h2>
+  <table>
+    <tr><th style="width:40mm">Challenge</th><th>Solution</th></tr>
+    <tr><td><b>Long async Aholo jobs vs short serverless requests</b></td><td><b>Poll-driven state machine.</b> Each <code>GET /api/pipeline/[id]</code> performs at most one transition: one SDK <code>create</code> or one <code>tasks.retrieve</code>. The SDKs' blocking <code>waitFor</code> helpers are deliberately not used inside requests, so no function waits on a multi-minute job. An advance lock (150 s) stops a hung function from wedging a job.</td></tr>
+    <tr><td><b>Forge froze on mobile ("Failed to fetch")</b></td><td>The forge page's poll is a <b>self-rescheduling loop</b> with exponential backoff, a 75 s request abort, and immediate resume on tab focus, visibility change or network return. Transient errors (429, 5xx, network, timeouts) retry silently; players see plain-language messages with a Retry.</td></tr>
+    <tr><td><b>Room scans vs Vercel's ~4.5 MB request body limit</b></td><td>A real scan video is ~18 MB, so posting it through a serverless function could never work in production. Now the server mints a <b>short-lived OUS token</b> with the official asset SDK, the browser uploads straight to <b>Aholo OUS</b> with the official <code>OusHttpClient</code> (single / multipart, MD5, status poll), and the server calls <code>world.reconstructions.create</code> with the asset URLs. The API key never leaves the server.</td></tr>
+    <tr><td><b>Lux3D refused some rigs</b> (<code>RIG_ELIGIBILITY_FAILED</code>)</td><td>Request 1.8 m characters; on refusal, re-rig once on a normalised copy of the same mesh (no new mesh credits); if it still fails, ship the fighter <b>freestyle</b> with procedural animation rather than dead-ending the forge.</td></tr>
+    <tr><td><b>Heavy rig / clip outputs</b></td><td>Each ~22 MB retarget GLB repeats the mesh; the app downloads one clip per poll and strips it to skeleton + clip with gltf-transform; fighter textures go to WebP.</td></tr>
+    <tr><td><b>Aholo result URLs expire (~2 h)</b></td><td>Everything needed later is rehosted. Finished world splats are served through a redirect to a freshly signed Aholo URL (no multi-MB rehosting).</td></tr>
+    <tr><td><b>Ephemeral serverless storage</b></td><td>Starters ship in the deployment; jobs use Runtime Cache (2 MB items chunked) + <code>/tmp</code>; finished live fighters are saved as one private <b>Vercel Blob</b> pack. Missing models are hidden from the roster, and a <code>SafeModel</code> boundary swaps a failing model or clip for procedural moves.</td></tr>
+    <tr><td><b>Aholo Viewer + Next.js bundling</b></td><td>Bundling the Viewer broke its Blob-URL workers; it is vendored to <code>public/vendor</code> and loaded with a non-bundled <code>import()</code>. Splat URLs are made absolute for the worker; each URL is retried with a same-origin proxy as a fallback.</td></tr>
+    <tr><td><b>One world job per account, no cancel API</b></td><td><code>/api/arenas</code> reports the account queue, refuses new world jobs while it is busy, and flags jobs stuck at 0 % for 90+ minutes. Fights always have Neon Ring and the Aholo Viewer sample splat available.</td></tr>
+    <tr><td><b>Limited hackathon credits</b></td><td>Per-IP and global daily forge limits; past the cap the forge continues in labelled mock mode, so judges never hit a dead end and the budget is protected.</td></tr>
+  </table>
+  <h3>How we tested it</h3>
+  <div class="grid2">
+    <ul class="small">
+      <li><code>npm run test:sim</code>: 18 deterministic gameplay checks run offline (no credits).</li>
+      <li><code>npm run test:durable</code>: the Blob pack store against a mocked Blob API, including cache headers and the health probe.</li>
+      <li>Lint and production builds; production checks of <code>/api/health</code>, photo privacy (private photos return 404) and cache headers.</li>
+    </ul>
+    <ul class="small">
+      <li>Scripted browser drivers playing full fights with keyboard and real touch-pointer events, including Android emulation (412×915, touch, 4× CPU throttle) against the Hard CPU.</li>
+      <li>Live end-to-end forges through the official SDKs on production, kept few on purpose to protect the credit budget.</li>
+      <li>Mock mode lets the whole UI be exercised without spending credits.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon</span><span>11</span></div>
+</section>
+
+<!-- ============ PAGE 11 · MOBILE + FUTURE + LINKS ============ -->
+<section class="page">
+  <div class="top"><b>ANYTHING<span>FIGHTER</span></b><span>11 · Mobile, future work, links</span></div>
+  <p class="kicker">Mobile support</p>
+  <h2>Built phone-first</h2>
+  <div style="display:grid;grid-template-columns:44mm 44mm 1fr;gap:4mm;align-items:start">
+    <div><img class="shot" src="assets/m-home.jpg"><div class="cap">Home on a 412 px phone.</div></div>
+    <div><img class="shot" src="assets/m-fight.jpg"><div class="cap">Toy Shop fight with the touch pad.</div></div>
+    <div>
+      <img class="shot" src="assets/m-fight-land.jpg"><div class="cap">Landscape: Quack Attack vs Toast Master on Rooftop Dojo.</div>
+      <ul class="small" style="margin-top:3mm">
+        <li><b>Snap</b> uses the phone camera; room scans have separate Record and Upload buttons so Android can pick a video from the gallery.</li>
+        <li><b>Touch pad:</b> ▲ Jump, ▼ Crouch, ◀ ▶, a large Punch, Kick, Block, Special and a Super button with the meter ring; all targets ≥ 56 px, fits 360 px screens, safe-area padded.</li>
+        <li>Camera field of view adapts to aspect ratio; short move hints for the first seconds on touch; vibration on hits.</li>
+        <li>Splat arenas retry and fall back to panorama or Neon Ring on devices that can't load them.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:2mm">
+    <div>
+      <h3>Future work</h3>
+      <ul class="small">
+        <li>Try Lux3D <code>imageToFourView</code> → multi-view <code>imgTo3d</code> (G1) for higher-fidelity meshes (wired in the SDK wrapper, not yet used).</li>
+        <li>LuxReal cinematic KO replays and trailers once a video API or deeper integration is available.</li>
+        <li>Best-of-3 rounds with win icons, gamepad support, juggles built on the anti-air knockdown.</li>
+        <li>Migrate the offline CLI scripts to the official SDKs; grey out stage cards in demo forges.</li>
+        <li>Online play between two forged fighters.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Credits &amp; licences</h3>
+      <p class="small">Fighters generated by Aholo Lux3D from AI-generated source photos; arenas generated by Aholo SpatialGen from our prompts; the room-scan sample video was AI-generated for this project. Placeholder fallback: RobotExpressive by Tomás Laulhé (CC0). Sound and music synthesised at runtime with WebAudio (original). Fonts: Bungee, Space Grotesk, Inter (SIL OFL 1.1).</p>
+    </div>
+  </div>
+  <h3>Links</h3>
+  <table class="links">
+    <tr><td>Live demo</td><td>https://anything-fighter.vercel.app</td></tr>
+    <tr><td>Gallery</td><td>https://anything-fighter.vercel.app/gallery</td></tr>
+    <tr><td>Source code (public)</td><td>https://github.com/AshThunder/anything-fighter</td></tr>
+    <tr><td>Aholo / Manycore docs used</td><td>https://labs.aholo.ai/api-docs/en/ · TypeScript SDK: https://labs.aholo.ai/api-docs/en/sdk/typescript</td></tr>
+    <tr><td>Team</td><td>Gold Tek (solo) · Eromonsele Michael · GitHub AshThunder · Track: Gaming</td></tr>
+  </table>
+  <div class="foot"><span>Anything Fighter · Gold Tek · Manycore Aholo Global 3D AI Hackathon · #Manycorehackathon</span><span>12</span></div>
+</section>
+
+</body>
+</html>
