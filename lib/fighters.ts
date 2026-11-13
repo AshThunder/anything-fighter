@@ -45,3 +45,6 @@ export const PLACEHOLDER_FIGHTERS: FighterDef[] = [
 export const STARTER_ROSTER_IDS = ["mug", "sneaker", "duck", "toaster", "cactus"];
 
 export type ArenaKind = "stage" | "pano" | "splat";
+
+/** Pipeline test forges made while debugging prod: shown in the gallery (?all=1) but not in the roster. */
+export const GALLERY_ONLY_IDS = ["gen-mwekglv2-db32ab"];
