@@ -171,6 +171,8 @@ export const lux3d = {
     outputFormat?: ("zip" | "glb" | "ply")[];
     enablePbr?: boolean;
     aiPredictSize?: boolean;
+    /** Model height in mm (Lux3D skill docs); takes priority over aiPredictSize. */
+    customSize?: number;
   }) => aholo<TaskId>("POST", `${L}/generate/img-to-3d/task/create`, b),
   textTo3d: (b: {
     prompt: string;
@@ -239,6 +241,8 @@ export interface Job {
   files: { photo?: string; mascot?: string; mesh?: string; rigged?: string; statue?: string; posed?: string; poster?: string; anims: Partial<Record<Move, string>>; exports: Record<string, string> };
   /** Lux3D auto-rig refused the mesh (RIG_ELIGIBILITY_FAILED): the fighter uses the unrigged mesh + procedural moves. */
   rigless?: boolean;
+  /** One automatic re-rig attempt on a 1.8 m normalised copy of the mesh after RIG_ELIGIBILITY_FAILED. */
+  rigRescue?: boolean;
   /** RenderCloud poster sub-state: mesh ingest task id, then render operation id. */
   poster?: { phase: "ingest" | "render"; id: string; fails?: number };
   /** Retarget actions still to download + strip (processed one per poll so a 60s Hobby function can finish). */
@@ -331,6 +335,14 @@ export async function advanceJob(id: string): Promise<Job> {
     job.transient = 0;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    if (canRiglessFallback(job, msg) && !job.rigRescue) {
+      try {
+        await rescueRig(job, msg);
+        return job;
+      } catch (e2) {
+        job.log.push(`[rig] re-rig attempt failed to start: ${e2 instanceof Error ? e2.message : e2}`);
+      }
+    }
     if (canRiglessFallback(job, msg)) {
       try {
         await finishRigless(job, msg);
@@ -396,14 +408,17 @@ async function startStage(job: Job, stage: Stage) {
     }
     case "mesh": {
       const img = job.remote.mascot ?? job.remote.photo!;
-      const t = await lux3d.imgTo3d({
-        img,
-        version: MESH_VERSION,
-        faceCount: MESH_FACES,
-        outputFormat: ["glb"],
-        enablePbr: true,
-        aiPredictSize: true,
-      });
+      const base = { img, version: MESH_VERSION, faceCount: MESH_FACES, outputFormat: ["glb"] as "glb"[], enablePbr: true };
+      // aiPredictSize scales the humanoid to the *object's* real size (a 30 cm sneaker-man), which the humanoid
+      // auto-rig then tends to reject (RIG_ELIGIBILITY_FAILED). Ask for a 1.8 m character instead.
+      let t: number;
+      try {
+        t = await lux3d.imgTo3d({ ...base, aiPredictSize: false, customSize: 1800 });
+      } catch (e) {
+        if (!(e instanceof AholoError) || (e.status ?? 0) >= 500) throw e;
+        job.log.push(`[mesh] customSize rejected (${e.message}), retrying without it`);
+        t = await lux3d.imgTo3d({ ...base, aiPredictSize: false });
+      }
       return enter(job, "mesh", t);
     }
     case "rig": {
@@ -605,6 +620,26 @@ async function advancePoster(job: Job) {
 }
 
 const RIG_INELIGIBLE = /RIG_ELIGIBILITY|eligibility/i;
+
+/** Re-rig once: normalise the Lux3D mesh to a 1.8 m, feet-on-floor, centred character, re-upload, rig again. */
+async function rescueRig(job: Job, reason: string) {
+  job.rigRescue = true;
+  const raw = await readFighterFile(job.id, job.files.mesh!);
+  if (!raw) throw new AholoError("Mesh missing from job store");
+  const inPath = path.join("/tmp", `af-${job.id}-rescue.in.glb`);
+  const norm = path.join("/tmp", `af-${job.id}-rescue.norm.glb`);
+  const out = path.join("/tmp", `af-${job.id}-rescue.glb`);
+  await fs.writeFile(inPath, raw);
+  await bakePose(inPath, norm, 0.5, 1.8); // no skin → only normalises size/placement
+  await shrinkTextures(norm, out, 1024);
+  const url = await uploadAsset(await fs.readFile(out), "mesh-1p8m.glb");
+  await Promise.all([inPath, norm, out].map((p) => fs.unlink(p).catch(() => {})));
+  job.log.push(`[rig] Lux3D rig refused the mesh (${reason.slice(0, 100)}); retrying on a 1.8 m normalised copy`);
+  const t = await lux3d.autoRig({ modelUrl: url });
+  job.error = undefined;
+  job.transient = 0;
+  enter(job, "rig", t);
+}
 
 function canRiglessFallback(job: Job, msg: string) {
   return job.mode === "live" && job.stage === "rig" && !!job.files.mesh && job.rigless === undefined && RIG_INELIGIBLE.test(msg);
