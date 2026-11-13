@@ -6,6 +6,7 @@ import { Arena } from "@/components/arena/Arena";
 import { AholoSplatLayer, isMobileGPU } from "@/components/arena/AholoSplatLayer";
 import { CameraRig, HitSparks } from "./Effects";
 import { Fighter } from "./Fighter";
+import { SafeModel } from "./SafeModel";
 import { StudioEnv } from "./StudioEnv";
 import { useGame } from "@/lib/game/store";
 import { ARENA_HALF, resetSim, sim, step } from "@/lib/game/sim";
@@ -164,8 +165,8 @@ export default function GameScene() {
         <StudioEnv />
         <Arena spec={arena} />
         <Suspense fallback={null}>
-          <Fighter def={fighters[0]} index={0} />
-          <Fighter def={fighters[1]} index={1} />
+          <SafeModel def={fighters[0]} render={(d) => <Fighter def={d} index={0} />} />
+          <SafeModel def={fighters[1]} render={(d) => <Fighter def={d} index={1} />} />
           <PhaseDriver />
         </Suspense>
         <HitSparks />

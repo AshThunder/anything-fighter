@@ -1,6 +1,7 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { durableIds, loadDurablePack } from "./durable";
 
 /**
  * Job + generated-fighter storage that works both locally and on Vercel.
@@ -13,6 +14,8 @@ import path from "node:path";
  *   meshes) are split into base64 chunks. The cache is free, ephemeral (LRU, TTL)
  *   and is not a durable database — fine for a hackathon preview, not long-term
  *   storage. No paid Blob / Redis / Postgres store is required.
+ * - Durable tier (optional, lib/durable.ts): when a Vercel Blob store is connected, finished live fighters are
+ *   also saved as one Blob pack each and read back here after the cache has evicted them.
  */
 
 const onVercel = !!process.env.VERCEL;
@@ -87,15 +90,37 @@ export async function writeFighterFile(id: string, file: string, buf: Buffer, tt
   }
 }
 
-export async function readFighterFile(id: string, file: string): Promise<Buffer | null> {
-  const roots = fighterFsRoot() === shippedFighterRoot() ? [fighterFsRoot()] : [fighterFsRoot(), shippedFighterRoot()];
-  for (const root of roots) {
+const fsRoots = () => (fighterFsRoot() === shippedFighterRoot() ? [fighterFsRoot()] : [fighterFsRoot(), shippedFighterRoot()]);
+
+async function readFs(id: string, file: string): Promise<Buffer | null> {
+  for (const root of fsRoots()) {
     try {
       return await fs.readFile(path.join(root, id, file));
     } catch {
       /* miss */
     }
   }
+  return null;
+}
+
+/** Durable Blob pack (if connected): unpack every file into the writable fs root once, return the one asked for. */
+async function readDurable(id: string, file: string): Promise<Buffer | null> {
+  const pack = await loadDurablePack(id);
+  const buf = pack?.get(file);
+  if (!pack || !buf) return null;
+  await Promise.all([...pack].map(([f, b]) => writeThroughFs(id, f, b).catch(() => {})));
+  return buf;
+}
+
+export async function readFighterFile(id: string, file: string): Promise<Buffer | null> {
+  const local = await readFs(id, file);
+  if (local) return local;
+  const fromCache = await readCachedFile(id, file);
+  if (fromCache) return fromCache;
+  return readDurable(id, file);
+}
+
+async function readCachedFile(id: string, file: string): Promise<Buffer | null> {
   const cache = await getRuntimeCache();
   if (!cache) return null;
   const key = fileKey(id, file);
@@ -122,6 +147,24 @@ export async function fighterFileExists(id: string, file: string): Promise<boole
   return (await readFighterFile(id, file)) !== null;
 }
 
+/**
+ * Cheap "is this file still there?" check for roster listing (no multi-MB reads): fs stat, then the Runtime
+ * Cache entry (single item, or the chunk meta + last chunk), then the durable index.
+ */
+export async function fighterFileProbe(id: string, file: string): Promise<boolean> {
+  for (const root of fsRoots()) {
+    if (await fs.stat(path.join(root, id, file)).then(() => true, () => false)) return true;
+  }
+  const cache = await getRuntimeCache();
+  if (cache) {
+    const key = fileKey(id, file);
+    const meta = (await cache.get(`${key}:meta`).catch(() => undefined)) as { chunks?: number } | undefined;
+    if (meta?.chunks && isB64(await cache.get(`${key}:${meta.chunks - 1}`).catch(() => undefined))) return true;
+    if (!meta && isB64(await cache.get(key).catch(() => undefined))) return true;
+  }
+  return (await loadDurablePack(id))?.has(file) ?? false;
+}
+
 export async function saveJobRecord(id: string, stage: string, json: string): Promise<void> {
   const ttl = stage === "done" ? CACHE_TTL_DONE : CACHE_TTL_JOB;
   await writeThroughFs(id, "job.json", Buffer.from(json, "utf8"));
@@ -132,16 +175,16 @@ export async function saveJobRecord(id: string, stage: string, json: string): Pr
 }
 
 export async function loadJobRecord(id: string): Promise<string | null> {
-  const buf = await readFighterFile(id, "job.json");
+  const buf = await readFs(id, "job.json");
   if (buf) return buf.toString("utf8");
   const cache = await getRuntimeCache();
-  if (!cache) return null;
-  const v = await cache.get(jobKey(id));
+  const v = cache ? await cache.get(jobKey(id)) : undefined;
   if (typeof v === "string") {
     await writeThroughFs(id, "job.json", Buffer.from(v, "utf8")).catch(() => {});
     return v;
   }
-  return null;
+  // finished fighters whose cache entry was evicted: the durable pack carries the final job record
+  return (await readDurable(id, "job.json"))?.toString("utf8") ?? null;
 }
 
 export async function addGeneratedId(id: string): Promise<void> {
@@ -169,6 +212,7 @@ export async function listFighterIds(): Promise<string[]> {
     const cur = (await cache.get(indexKey())) as string[] | undefined;
     if (Array.isArray(cur)) cur.forEach((x) => ids.add(x));
   }
+  (await durableIds()).forEach((x) => ids.add(x));
   return [...ids];
 }
 

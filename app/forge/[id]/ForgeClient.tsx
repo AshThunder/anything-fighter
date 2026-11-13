@@ -13,6 +13,7 @@ import { Hud } from "@/components/game/Hud";
 import { useGame } from "@/lib/game/store";
 import type { FighterDef } from "@/lib/fighters";
 import { BUILTIN_ARENAS } from "@/lib/arenas";
+import { friendlyForgeError } from "@/lib/player-errors";
 
 const GameScene = dynamic(() => import("@/components/game/GameScene"), { ssr: false });
 
@@ -52,6 +53,7 @@ interface JobView {
   stage: Stage;
   error?: string;
   mode: "live" | "mock";
+  mockReason?: "limit";
   createdAt: number;
   stageStartedAt: number;
   options: { exportPrint: boolean };
@@ -106,11 +108,11 @@ export default function ForgeClient() {
         try {
           j = JSON.parse(text);
         } catch {
-          throw new Error(`server busy (HTTP ${r.status})`);
+          throw new Error("server busy");
         }
         if (r.status === 404) {
           setLost(true);
-          setErr(j.error ?? "Job not found");
+          setErr(null);
           stopped = true;
           return;
         }
@@ -132,7 +134,8 @@ export default function ForgeClient() {
         fails.current++;
         const msg = e instanceof Error ? e.message : String(e);
         const net = /failed to fetch|network|load failed|abort/i.test(msg);
-        setErr(net ? "Connection hiccup, reconnecting… (your fighter keeps forging at Aholo)" : `${msg} (retrying…)`);
+        if (!net) console.warn(`[forge] poll failed: ${msg}`);
+        setErr(net ? "Connection hiccup, reconnecting… (your fighter keeps forging at Aholo)" : "The forge server is busy, retrying…");
         next = Math.min(15_000, 2500 * 2 ** Math.min(fails.current, 3));
       } finally {
         inflight = false;
@@ -164,8 +167,14 @@ export default function ForgeClient() {
   }, []);
 
   const startPractice = async () => {
-    const { fighters } = await fetch("/api/fighters").then((r) => r.json());
-    const list = (fighters as FighterDef[]).filter((f) => f.id !== id);
+    const { fighters } = await fetch("/api/fighters")
+      .then((r) => r.json())
+      .catch(() => ({ fighters: [] }));
+    const list = ((fighters ?? []) as FighterDef[]).filter((f) => f.id !== id);
+    if (list.length < 2) {
+      setErr("Practice is unavailable right now, the roster didn't load.");
+      return;
+    }
     const a = list[Math.floor(Math.random() * list.length)];
     const b = list.find((f) => f.id !== a.id) ?? list[0];
     setMode("practice");
@@ -176,7 +185,7 @@ export default function ForgeClient() {
   const retry = async () => {
     try {
       const r = await fetch(`/api/pipeline/${id}/retry`, { method: "POST" }).then((x) => x.json());
-      if (r.error) setErr(r.error);
+      if (r.error) setErr(friendlyForgeError(r.error, job?.stage));
       else {
         setErr(null);
         setJob(r.job);
@@ -229,20 +238,20 @@ export default function ForgeClient() {
           <div className="flex flex-col gap-4 rounded-2xl border border-orange-300/15 bg-[#1a1511]/80 p-5" data-forge>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h1 className="font-display text-3xl font-black italic">
-                {fighter ? `${fighter.name} is ready!` : job?.error ? "Forge hit a snag" : `Forging ${job?.name ?? "your fighter"}…`}
+                {lost ? "Forge not found" : fighter ? `${fighter.name} is ready!` : job?.error ? "Forge hit a snag" : `Forging ${job?.name ?? "your fighter"}…`}
               </h1>
-              <span className="text-xs text-orange-200/60">
-                {job?.mode === "mock" ? "mock pipeline (no API key)" : "live Aholo Lux3D"} · {elapsed}s
+              <span className={`text-xs text-orange-200/60 ${lost ? "hidden" : ""}`}>
+                {job?.mode === "mock" ? (job.mockReason === "limit" ? "demo forge (no credits)" : "mock pipeline (no API key)") : "live Aholo Lux3D"} · {elapsed}s
                 {!fighter && !job?.error && remaining > 0 ? ` · ~${Math.ceil(remaining / 60)} min left` : ""}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-black/50">
+            <div className={`h-2 overflow-hidden rounded-full bg-black/50 ${lost ? "hidden" : ""}`}>
               <div
                 className={`h-full rounded-full transition-[width] duration-700 ${job?.error ? "bg-red-500" : "bg-gradient-to-r from-orange-500 to-yellow-400"}`}
                 style={{ width: `${fighter ? 100 : Math.max(4, (Math.max(0, idx) / stages.length) * 100)}%` }}
               />
             </div>
-            <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <ol className={`grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 ${lost ? "hidden" : ""}`}>
               {stages.map((s, i) => {
                 const done = i < idx || !!fighter;
                 const active = i === idx && !job?.error && !fighter;
@@ -272,21 +281,46 @@ export default function ForgeClient() {
                   active={job.error ? undefined : STAGE_SERVICE[stages[idx]?.key ?? "upload"]}
                 />
               ))}
+            {job?.mockReason === "limit" && (
+              <p className="rounded-xl border border-yellow-400/25 bg-yellow-400/5 p-3 text-xs text-yellow-100/80" data-demo-forge>
+                Today&apos;s live Lux3D forge budget is used up, so this is a <b>demo forge</b>: the stages are simulated (no Aholo
+                credits) and your fighter uses a stand-in robot body. Every fighter in the{" "}
+                <Link href="/#select" className="underline">
+                  roster
+                </Link>{" "}
+                and{" "}
+                <Link href="/gallery" className="underline">
+                  gallery
+                </Link>{" "}
+                was forged live by Lux3D. Live forging resets at midnight (Lagos time).
+              </p>
+            )}
             {job?.error && (
-              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm">
-                <span className="flex-1 text-red-300">{job.error}</span>
-                <button onClick={retry} className="rounded-lg bg-orange-500 px-4 py-1.5 font-display font-bold text-black" data-action="retry">
-                  Retry stage {job.retries ? `(${job.retries}/3)` : ""}
-                </button>
-                <Link href="/" className="rounded-lg border border-orange-300/30 px-4 py-1.5 font-display">
-                  Try another photo
-                </Link>
+              <div className="flex flex-col gap-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm" data-forge-error>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="flex-1 text-red-300">{friendlyForgeError(job.error, job.stage)}</span>
+                  {(job.retries ?? 0) < 3 && (
+                    <button onClick={retry} className="rounded-lg bg-orange-500 px-4 py-1.5 font-display font-bold text-black" data-action="retry">
+                      Retry stage {job.retries ? `(${job.retries}/3)` : ""}
+                    </button>
+                  )}
+                  <Link href="/#select" className="rounded-lg border border-orange-300/30 px-4 py-1.5 font-display">
+                    Fight with the roster
+                  </Link>
+                  <Link href="/" className="rounded-lg border border-orange-300/30 px-4 py-1.5 font-display">
+                    Try another photo
+                  </Link>
+                </div>
+                <details className="text-[11px] text-orange-200/40">
+                  <summary className="cursor-pointer select-none">Technical details</summary>
+                  <code className="mt-1 block break-all">{job.error.slice(0, 300)}</code>
+                </details>
               </div>
             )}
             {err && !job?.error && <p className="text-xs text-yellow-300/80">{err}</p>}
             {lost && (
               <p className="text-sm text-orange-100/70">
-                This forge job has expired (jobs are kept for 6 hours).{" "}
+                This forge job has expired or never existed (unfinished jobs are kept for 6 hours).{" "}
                 <Link href="/" className="underline">
                   Forge a new fighter
                 </Link>{" "}
@@ -319,7 +353,8 @@ export default function ForgeClient() {
                 </Link>
               </div>
             ) : (
-              !job?.error && (
+              !job?.error &&
+              !lost && (
                 <div className="flex flex-wrap items-center gap-3 text-sm text-orange-100/70">
                   <span className="flex-1">💡 {TIPS[tip % TIPS.length]}</span>
                   {!practice && (

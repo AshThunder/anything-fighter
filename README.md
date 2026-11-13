@@ -105,8 +105,12 @@ The app is built to run on Vercel Functions. `GET /api/pipeline/[id]` advances t
 this at 60s; retarget downloads are therefore processed one clip per poll).
 
 Job state and newly forged files are stored in the **Vercel Runtime Cache** (free, per-region, ephemeral,
-2 MB items chunked) plus `/tmp`. The starter roster is baked into the deployment and is durable. This is
-not a paid Blob/Redis store — cache entries can be evicted, so generated fighters may not last forever.
+2 MB items chunked) plus `/tmp`. The starter roster (and a few baked user forges in `public/fighters/gen-*`)
+ship with the deployment and are durable. When a **Vercel Blob** store is connected (`BLOB_READ_WRITE_TOKEN`,
+private store; free on Hobby within its limits) every finished live fighter is also saved as one Blob pack
+(`lib/durable.ts`, 2 Blob operations per forge) and read back after the cache evicts it. Without Blob,
+generated fighters can be evicted; the roster then hides any fighter whose model file is gone, and the fight
+scene swaps a missing model/clip for procedural moves or the Boltbox stand-in instead of crashing.
 
 Live forges are capped to protect Aholo credits:
 
@@ -114,7 +118,7 @@ Live forges are capped to protect Aholo credits:
 |---|---|---|
 | `FORGE_IP_DAILY_LIMIT` | 2 | Live forges per client IP per Africa/Lagos day |
 | `FORGE_GLOBAL_DAILY_LIMIT` | 15 | Live forges across all IPs per day |
-| `FORGE_LIMIT_FALLBACK` | `block` | `block` returns HTTP 429 "Forge limit reached, try the roster"; `mock` continues without spending credits |
+| `FORGE_LIMIT_FALLBACK` | `mock` | `mock` continues as a clearly labelled demo forge (no credits, stand-in robot body) so nobody hits a dead end; `block` returns HTTP 429 "Forge limit reached, try the roster" |
 
 Counters use Runtime Cache on Vercel, or an in-memory map (per instance, resets on cold start) when the
 cache API is unavailable. Limits do not apply in mock mode.
@@ -188,7 +192,8 @@ When a clip is missing, `Fighter.tsx` falls back to whole-body procedural motion
 - RenderCloud poster is optional: any failure or >8 min skips it.
 - **World queue:** the account runs one SpatialGen/Reality job at a time and there is no cancel endpoint. `/api/arenas` reports
   live world status + the account queue; new world jobs are refused while the queue is busy; stuck jobs (RUNNING 0 % > 90 min)
-  are flagged and the fight always has the Neon Ring + Aholo Viewer sample splat. Finished worlds are served through
+  are flagged and the fight always has the Neon Ring + Aholo Viewer sample splat (the sample card stays in the stage list even
+  when generated worlds are ready). Finished worlds are served through
   `/api/assets/arenas/<id>/…`, which redirects to a freshly signed Aholo URL (no multi-MB rehosting in serverless storage).
 
 ## Aholo Viewer + R3F (findings)

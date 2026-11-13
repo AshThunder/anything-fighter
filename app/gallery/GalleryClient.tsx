@@ -11,11 +11,15 @@ const VersusPreview = dynamic(() => import("@/components/landing/VersusPreview")
 export default function GalleryClient() {
   const [fighters, setFighters] = useState<FighterDef[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     fetch("/api/fighters?all=1")
       .then((r) => r.json())
-      .then((r) => setFighters((r.fighters as FighterDef[]).filter((f) => f.source !== "placeholder")));
-  }, []);
+      // Lux3D showcase: no placeholder robot, no demo/mock forges
+      .then((r) => setFighters(((r.fighters ?? []) as FighterDef[]).filter((f) => f.source === "lux3d")))
+      .catch(() => setFailed(true));
+  }, [attempt]);
   return (
     <main className="min-h-dvh bg-[#0d0b09] text-orange-50">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(242,127,13,0.14),transparent_60%)]" />
@@ -34,7 +38,21 @@ export default function GalleryClient() {
             Every fighter here started as one photo. Lux3D re-imagined it, built a PBR mesh, rigged it and retargeted 10 moves; RenderCloud shot the poster. Each card lists the Aholo services that built it.
           </p>
         </div>
-        {!fighters && <p className="text-orange-200/50">Loading…</p>}
+        {!fighters && !failed && <p className="text-orange-200/50">Loading…</p>}
+        {!fighters && failed && (
+          <p className="text-orange-200/60">
+            Couldn&apos;t load the gallery.{" "}
+            <button
+              onClick={() => {
+                setFailed(false);
+                setAttempt((n) => n + 1);
+              }}
+              className="underline hover:text-orange-50"
+            >
+              Try again
+            </button>
+          </p>
+        )}
         <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {fighters?.map((f) => (
             <article key={f.id} className="overflow-hidden rounded-2xl border border-orange-300/15 bg-[#1a1511]/80" data-gallery-card={f.id}>

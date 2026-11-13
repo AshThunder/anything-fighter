@@ -12,6 +12,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const stuck = job.status !== "SUCCEEDED" && job.status !== "FAILED" && (job.progress ?? 0) === 0 && Date.now() - job.createdAt > STUCK_MS;
     return NextResponse.json({ job, arena, stuck });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 404 });
+    console.error(`[arenas] poll ${id} failed: ${e instanceof Error ? e.message : e}`);
+    return NextResponse.json({ error: "This arena job can't be found any more. Fight in the built-in arenas meanwhile." }, { status: 404 });
   }
 }

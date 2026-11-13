@@ -7,9 +7,9 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const fd = await req.formData();
   const files = fd.getAll("files").filter((f): f is File => f instanceof File);
-  if (!files.length) return NextResponse.json({ error: "No files" }, { status: 400 });
+  if (!files.length) return NextResponse.json({ error: "Pick a video or at least 20 photos first." }, { status: 400 });
   const total = files.reduce((s, f) => s + f.size, 0);
-  if (total > 200 * 1024 * 1024) return NextResponse.json({ error: "Max 200 MB" }, { status: 413 });
+  if (total > 200 * 1024 * 1024) return NextResponse.json({ error: "That's too big (max 200 MB). Try a shorter video." }, { status: 413 });
   try {
     const job = await createRoomScan({
       name: String(fd.get("name") || "My Room").slice(0, 40),
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ job });
   } catch (e) {
     if (e instanceof WorldQueueBusy) return NextResponse.json({ error: e.message, code: "WORLD_QUEUE_BUSY" }, { status: 409 });
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+    console.error(`[room] scan failed to start: ${e instanceof Error ? e.message : e}`);
+    return NextResponse.json({ error: "Couldn't start the room scan right now. Try again later, or fight in the built-in arenas." }, { status: 400 });
   }
 }

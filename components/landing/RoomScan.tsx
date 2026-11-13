@@ -35,7 +35,7 @@ export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a:
     files.forEach((f) => fd.append("files", f, f.name));
     try {
       const res = await fetch("/api/room", { method: "POST", body: fd });
-      const r = await res.json().catch(() => ({ error: `Upload failed (HTTP ${res.status})` }));
+      const r = await res.json().catch(() => ({ error: "Upload failed, the server is busy. Please try again." }));
       if (r.error) {
         setErr(r.error);
         setBusy(false);
@@ -102,13 +102,25 @@ export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a:
         </button>
         {job && (
           <span className="text-[11px] text-orange-200/60">
-            {job.status === "SUCCEEDED" ? "✓ Arena ready" : job.status === "FAILED" ? "✗ failed" : `${job.status.toLowerCase()} ${Math.round((job.progress ?? 0) * 100)}%`}
+            {job.status === "SUCCEEDED"
+              ? "✓ Arena ready"
+              : job.status === "FAILED"
+                ? "✗ Scan failed"
+                : job.status === "RUNNING"
+                  ? `Building ${Math.round((job.progress ?? 0) * 100)}%`
+                  : job.status === "UPLOADING"
+                    ? "Uploading…"
+                    : "Queued at Aholo"}
             {t0 > 0 && now > t0 && job.status !== "SUCCEEDED" ? ` · ${Math.round((now - t0) / 1000)}s` : ""}
           </span>
         )}
       </div>
       {!ok && files.length > 0 && <p className="mt-1 text-[11px] text-yellow-300/80">Need one video or at least 20 photos.</p>}
-      {(err || job?.error) && <p className="mt-1 text-[11px] text-red-400">{err ?? job?.error}</p>}
+      {(err || job?.error) && (
+        <p className="mt-1 text-[11px] text-red-400" title={job?.error}>
+          {err ?? "Aholo couldn't rebuild this scan. Try a slower, steadier 10–20 s loop with good light."}
+        </p>
+      )}
       <input
         ref={ref}
         type="file"

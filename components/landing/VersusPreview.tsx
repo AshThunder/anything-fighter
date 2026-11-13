@@ -7,6 +7,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import type { FighterDef } from "@/lib/fighters";
 import { CLIP_CANDIDATES } from "@/lib/moves";
 import { StudioEnv } from "@/components/game/StudioEnv";
+import { SafeModel } from "@/components/game/SafeModel";
 
 function Model({ def, x, dir, spin = false }: { def: FighterDef; x: number; dir: 1 | -1; spin?: boolean }) {
   const idleUrl = def.animUrls?.idle;
@@ -59,8 +60,8 @@ export default function VersusPreview({ a, b, solo = false }: { a?: FighterDef; 
       <pointLight position={[-2.5, 1.5, 1.5]} color="#f27f0d" intensity={8} />
       <pointLight position={[2.5, 1.5, 1.5]} color="#38bdf8" intensity={8} />
       <Suspense fallback={null}>
-        {a && <Model key={`a-${a.id}`} def={a} x={solo ? 0 : -1.05} dir={1} spin={solo} />}
-        {b && <Model key={`b-${b.id}`} def={b} x={1.05} dir={-1} />}
+        {a && <SafeModel key={`a-${a.id}`} def={a} render={(d) => <Model def={d} x={solo ? 0 : -1.05} dir={1} spin={solo} />} />}
+        {b && <SafeModel key={`b-${b.id}`} def={b} render={(d) => <Model def={d} x={1.05} dir={-1} />} />}
       </Suspense>
       <ContactShadows position-y={0} opacity={0.6} scale={8} blur={2.2} far={3} />
     </Canvas>

@@ -9,10 +9,12 @@ import { STARTER_ROSTER_IDS, type AholoServiceKey, type FighterDef } from "./fig
 import { optimizeFighterGlb, shrinkTextures, stripToAnimation, weldSimplify } from "./optimize";
 import { bakePose } from "./pose";
 import { ingestCreate, ingestGet, renderPoll, renderSubmit } from "./poster";
+import { durableEnabled, durableIds, saveDurablePack, type FighterPack } from "./durable";
 import {
   addGeneratedId,
   fighterDir,
   fighterFileExists,
+  fighterFileProbe,
   listFighterIds,
   loadJobRecord,
   readFighterFile,
@@ -116,6 +118,10 @@ export interface Job {
   poster?: { phase: "ingest" | "render"; id: string; fails?: number };
   /** Retarget actions still to download + strip (processed one per poll so a 60s Hobby function can finish). */
   pendingAnims?: { move: Move; url: string }[];
+  /** Mock forced by the spend guard (daily live-forge cap reached), not by a missing API key. */
+  mockReason?: "limit";
+  /** Finished fighter saved to the durable Blob store (lib/durable.ts). */
+  durable?: boolean;
   log: string[];
 }
 
@@ -164,12 +170,13 @@ export async function createJob(input: {
     options: { mascot: input.mascot ?? true, exportPrint: input.exportPrint ?? false, prompt: input.prompt },
     remote: {},
     files: { anims: {}, exports: {} },
+    ...(input.forceMock && !isMockMode() ? { mockReason: "limit" as const } : {}),
     log: [],
   };
   const photoFile = `photo.${input.photoExt}`;
   await writeFighterFile(id, photoFile, input.photo);
   job.files.photo = photoFile;
-  if (job.mode === "mock") job.log.push("[upload] mock mode (no credits spent)");
+  if (job.mode === "mock") job.log.push(`[upload] mock mode (no credits spent${job.mockReason ? ", daily live-forge limit reached" : ""})`);
   await saveJob(job);
   // Upload synchronously in live mode (small file), then kick off the first generation stage.
   return advanceJob(id);
@@ -638,6 +645,69 @@ async function finish(job: Job) {
   const fighter = jobToFighter(job);
   await writeFighterFile(job.id, "fighter.json", Buffer.from(JSON.stringify(fighter, null, 2), "utf8"));
   await addGeneratedId(job.id);
+  await persistDurable(job);
+}
+
+/** Files a finished fighter needs to be served forever (optimised artefacts only; never *.orig.glb). */
+function durableFiles(job: Job): string[] {
+  const f = job.files;
+  return [
+    f.photo,
+    f.mascot,
+    f.rigged,
+    f.statue,
+    f.poster,
+    job.rigless ? f.mesh : undefined, // a freestyle fighter keeps its mesh for the one-shot re-rig
+    ...Object.values(f.anims),
+    ...Object.values(f.exports),
+    "thumb.webp",
+    "fighter.json",
+  ].filter((x): x is string => !!x && !x.includes(".orig."));
+}
+
+/**
+ * Copy a finished live fighter into the durable Blob store (no-op without a Blob store or in mock mode).
+ * Never throws: a Blob failure leaves the fighter in Runtime Cache as before, and the roster backfill retries.
+ */
+async function persistDurable(job: Job): Promise<void> {
+  if (job.mode !== "live" || job.stage !== "done" || !durableEnabled()) return;
+  try {
+    const pack: FighterPack = new Map();
+    for (const file of new Set(durableFiles(job))) {
+      const buf = await readFighterFile(job.id, file);
+      if (buf) pack.set(file, buf);
+      else if (file !== "thumb.webp") job.log.push(`[durable] ${file} missing, not saved`);
+    }
+    const model = job.files.rigged ?? job.files.statue;
+    if (!model || !pack.has(model)) {
+      job.log.push("[durable] model missing from the job store; not saved");
+      return;
+    }
+    job.durable = true;
+    pack.set("job.json", Buffer.from(JSON.stringify(job, null, 2), "utf8"));
+    job.durable = await saveDurablePack(job.id, pack);
+    job.log.push(job.durable ? `[durable] saved ${pack.size} files to Blob` : "[durable] Blob save failed, will retry");
+  } catch (e) {
+    job.durable = false;
+    job.log.push(`[durable] failed: ${e instanceof Error ? e.message : e}`);
+  }
+}
+
+const backfillTried = new Set<string>();
+
+/** Older finished fighters (pre-Blob, or a failed save): persist them now, at most once per id per instance. */
+async function ensureDurable(id: string): Promise<void> {
+  if (backfillTried.has(id) || locks.has(id)) return;
+  backfillTried.add(id);
+  const job = await loadJob(id);
+  if (!job || job.mode !== "live" || job.stage !== "done" || job.durable) return;
+  locks.add(id);
+  try {
+    await persistDurable(job);
+    if (job.durable) await saveJob(job);
+  } finally {
+    locks.delete(id);
+  }
 }
 
 const COLORS = ["#f27f0d", "#38bdf8", "#a3e635", "#f472b6", "#facc15", "#c084fc"];
@@ -666,7 +736,13 @@ export function jobToFighter(job: Job): FighterDef {
     id,
     name: job.name,
     tagline:
-      job.mode === "mock" ? "Mock pipeline fighter (no API key yet)" : job.rigless ? "Lux3D mesh, too wild to rig: fights freestyle" : "Forged by Aholo Lux3D",
+      job.mode === "mock"
+        ? job.mockReason === "limit"
+          ? "Demo forge (today's live Lux3D budget was used up)"
+          : "Mock pipeline fighter (no API key yet)"
+        : job.rigless
+          ? "Lux3D mesh, too wild to rig: fights freestyle"
+          : "Forged by Aholo Lux3D",
     modelUrl: assetUrl(id, job.files.rigged ?? job.files.statue ?? job.files.mesh ?? "rigged.glb"),
     animUrls: Object.keys(anims).length ? anims : undefined,
     exports: Object.keys(exports).length ? exports : undefined,
@@ -680,15 +756,25 @@ export function jobToFighter(job: Job): FighterDef {
   };
 }
 
-/** All finished generated fighters (deployment filesystem + Runtime Cache index). */
+/**
+ * All finished generated fighters (deployment filesystem + Runtime Cache index + durable Blob index).
+ * Fighters whose model file has vanished (evicted from Runtime Cache, never made durable) are left out, so
+ * the roster never offers a fighter that can't load. Finished live fighters not yet in Blob are backfilled
+ * in the background (one per request).
+ */
 export async function listGeneratedFighters(): Promise<FighterDef[]> {
   const entries = await listFighterIds();
+  const durable = new Set(await durableIds());
   const out: FighterDef[] = [];
+  let backfill: string | undefined;
   for (const e of entries) {
     try {
       const raw = await readFighterFile(e, "fighter.json");
       if (!raw) continue;
       const f: FighterDef = JSON.parse(raw.toString("utf8"));
+      const model = f.modelUrl.match(/\/api\/assets\/[^/]+\/([^/?]+)$/)?.[1];
+      if (model && !(await fighterFileProbe(e, model))) continue;
+      if (!backfill && durableEnabled() && e.startsWith("gen-") && f.source === "lux3d" && !durable.has(e) && !backfillTried.has(e)) backfill = e;
       const poster = path.join(process.cwd(), "public", "posters", e, "poster.png");
       if (!f.posterUrl && (await fs.stat(poster).catch(() => null))) f.posterUrl = `/api/assets/posters/${e}/poster.png`;
       f.thumbUrl = (await ensureThumb(e, f.thumbUrl)) ?? f.thumbUrl;
@@ -702,6 +788,11 @@ export async function listGeneratedFighters(): Promise<FighterDef[]> {
     const i = STARTER_ROSTER_IDS.indexOf(f.id);
     return i >= 0 ? i : f.id.startsWith("test-") ? 1000 : 100;
   };
+  if (backfill) {
+    const id = backfill;
+    const work = ensureDurable(id).catch(() => {});
+    import("@vercel/functions").then((m) => m.waitUntil(work), () => {});
+  }
   return out.sort((a, b) => rank(a) - rank(b) || (b.createdAt ?? 0) - (a.createdAt ?? 0));
 }
 

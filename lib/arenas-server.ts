@@ -140,8 +140,10 @@ export async function listArenas(): Promise<ArenaDef[]> {
   }
   const rank = (a: ArenaDef) => (a.pending ? 10 : 0) + (a.source === "spatialgen" ? 0 : a.source === "reality" ? 1 : 2);
   out.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-  // The Aholo Viewer sample splat is the fallback 3DGS arena until a generated/scanned world exists.
-  return [BUILTIN_ARENAS[0], ...out.filter((a) => !a.pending), ...(out.some((a) => a.splatUrl && !a.pending) ? [] : BUILTIN_ARENAS.slice(1)), ...out.filter((a) => a.pending)];
+  // Neon Ring first, then finished worlds, then the official Aholo Viewer sample splat. The sample is always
+  // listed (it no longer drops out once a generated world is ready, a regression from 31af7df): it's the
+  // reliable 3DGS fallback if Aholo's signed world URLs ever stop resolving.
+  return [BUILTIN_ARENAS[0], ...out.filter((a) => !a.pending), ...BUILTIN_ARENAS.slice(1), ...out.filter((a) => a.pending)];
 }
 
 /** Resolve the Aholo world id behind an arena id (shipped dir or app-created job). */
