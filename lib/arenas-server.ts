@@ -52,7 +52,7 @@ async function resolveShippedPending(id: string, ids: string[]): Promise<ArenaDe
     if (!splat && !pano) return null;
     const upAxis = d.assets?.semanticsMetadata?.upAxis === "Y" ? "Y" : "Z";
     const direct = d.assets?.splats?.urls?.spzPath ?? d.assets?.splats?.urls?.plyPath;
-    const place = splat ? await splatPlacement(id, worldId, d.assets?.splats?.urls?.spzPath, upAxis) : null;
+    const place = splat ? await splatPlacement(id, worldId, d.assets?.splats?.urls?.spzPath, upAxis, !reality) : null;
     return {
       id,
       name,

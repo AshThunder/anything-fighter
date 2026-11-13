@@ -11,10 +11,10 @@ const mem = new Map<string, SplatPlacement | Promise<SplatPlacement | null>>();
  * (lib/splat-fit, keyed by worldId) → computed now with a short time budget (keeps going in the background
  * via waitUntil and caches, so the next /api/arenas call has it).
  */
-export async function splatPlacement(arenaId: string, worldId: string | undefined, spzUrl: string | undefined, upAxis: "Z" | "Y" | "-Y"): Promise<SplatPlacement | null> {
+export async function splatPlacement(arenaId: string, worldId: string | undefined, spzUrl: string | undefined, upAxis: "Z" | "Y" | "-Y", viewpoint = false): Promise<SplatPlacement | null> {
   if (SPLAT_PLACEMENT[arenaId]) return SPLAT_PLACEMENT[arenaId];
   if (!worldId || !spzUrl || !/\.spz(\?|$)/.test(spzUrl)) return null;
-  const key = `splatfit:v1:${worldId}`;
+  const key = `splatfit:v2:${worldId}`;
   const hit = mem.get(key);
   if (hit && !(hit instanceof Promise)) return hit;
   let p = hit as Promise<SplatPlacement | null> | undefined;
@@ -25,7 +25,7 @@ export async function splatPlacement(arenaId: string, worldId: string | undefine
       if (cached?.origin) return cached;
       const r = await fetch(spzUrl, { signal: AbortSignal.timeout(45_000) });
       if (!r.ok) throw new Error(`spz ${r.status}`);
-      const fit = fitSplat(Buffer.from(await r.arrayBuffer()), upAxis);
+      const fit = fitSplat(Buffer.from(await r.arrayBuffer()), upAxis, viewpoint);
       await cache?.set(key, fit, { ttl: 30 * 86400, name: key }).catch(() => {});
       return fit;
     })()

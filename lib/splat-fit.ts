@@ -68,7 +68,12 @@ function basis(up: Up) {
   return { h0: 0, h1: 2, u: 1, us: -1 };
 }
 
-export function fitSplat(gz: Buffer, up: Up = "Z"): SplatPlacement {
+/**
+ * @param viewpoint SpatialGen worlds are generated around a panorama camera at the splat origin (eye height,
+ * floor ~1–2 units below): restrict to a 15-unit radius around it and look for the floor just below the eye.
+ * That ignores far sky domes and the street below rooftop scenes. Reality scans have no such anchor.
+ */
+export function fitSplat(gz: Buffer, up: Up = "Z", viewpoint = false): SplatPlacement {
   const { pos, alpha, n } = decodeSpzPositions(gz);
   const { h0, h1, u, us } = basis(up);
   const H0: number[] = [], H1: number[] = [], U: number[] = [];
@@ -78,10 +83,37 @@ export function fitSplat(gz: Buffer, up: Up = "Z"): SplatPlacement {
     H1.push(pos[i * 3 + h1]);
     U.push(us * pos[i * 3 + u]);
   }
+  if (viewpoint) {
+    let k = 0;
+    for (let i = 0; i < U.length; i++)
+      if (Math.hypot(H0[i], H1[i]) <= 15 && U[i] >= -4 && U[i] <= 6) {
+        H0[k] = H0[i];
+        H1[k] = H1[i];
+        U[k++] = U[i];
+      }
+    if (k > 5000) H0.length = H1.length = U.length = k;
+  }
+  // Outdoor worlds carry a far sky dome (SpatialGen puts it ~30× further out than the scene): keep the core only.
+  {
+    const m0 = pct(Float32Array.from(H0), 50), m1 = pct(Float32Array.from(H1), 50);
+    const D = Float32Array.from(H0, (v, i) => Math.hypot(v - m0, H1[i] - m1));
+    const d50 = pct(D, 50), d99 = pct(D, 99);
+    if (d99 > 8 * d50) {
+      const cut = 2 * d50;
+      let k = 0;
+      for (let i = 0; i < D.length; i++)
+        if (D[i] <= cut) {
+          H0[k] = H0[i];
+          H1[k] = H1[i];
+          U[k++] = U[i];
+        }
+      H0.length = H1.length = U.length = k;
+    }
+  }
   const Uf = Float32Array.from(U);
   const uLo = pct(Uf, 0.5), uHi = pct(Uf, 99);
   // 1. floor: densest 5 cm band in the lowest 40 % of the height range
-  const bin = 0.05, top = uLo + 0.4 * (uHi - uLo);
+  const bin = 0.05, top = viewpoint ? Math.max(uLo + 0.2, Math.min(uLo + 0.4 * (uHi - uLo), 0)) : uLo + 0.4 * (uHi - uLo);
   const nb = Math.max(1, Math.ceil((top - uLo) / bin));
   const hist = new Array(nb).fill(0);
   for (const v of U) if (v >= uLo && v < top) hist[Math.floor((v - uLo) / bin)]++;

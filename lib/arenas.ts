@@ -60,4 +60,6 @@ export const SPLAT_PLACEMENT: Record<string, { origin: [number, number, number];
   "my-room": { origin: [0.548, 2.4, -0.911], scale: 3.5, yaw: 0, half: 2.5 },
   // auto-fit as-is: shelves of toys behind the fighters
   "toy-shop": { origin: [-0.46, -0.139, -0.96], scale: 2.951, yaw: 1.571, half: 3.822 },
+  // outdoor: floor = roof just below the panorama eye (auto-fit), turned to face the city skyline
+  "rooftop-dojo": { origin: [0, 0, -1.325], scale: 2, yaw: 1.571, half: 3 },
 };
