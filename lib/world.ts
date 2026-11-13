@@ -2,11 +2,13 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { aholoRaw as aholo, isMockMode, uploadAsset } from "./aholo";
+import { call, isMockMode, uploadAsset, worldClient } from "./aholo-sdk";
 import { getRuntimeCache } from "./store";
 
 /**
- * Aholo World API (SpatialGen generation + Aholo Reality reconstruction) as poll-driven arena jobs.
+ * Aholo World API (SpatialGen generation + Aholo Reality reconstruction) as poll-driven arena jobs, via the
+ * official @manycore/aholo-sdk-world client (generations.create / reconstructions.create / retrieve / list) and
+ * @manycore/aholo-sdk-asset for uploads. world.waitFor is not used: each client poll does one retrieve.
  *   POST /global/world/v1/generations      {name, prompt, resources?[≤1 image]}            → {worldId}   (10 credits)
  *   POST /global/world/v1/reconstructions  {name, resources[video|≥20 images], taskQuality, scene} → {worldId}
  *   GET  /global/world/v1/{worldId}        → status PENDING/PREPROCESSING/RUNNING/SUCCEEDED/FAILED/CANCELED/TIMEOUT/REJECTED
@@ -115,7 +117,7 @@ export function worldDetail(worldId: string, opts: { fresh?: boolean } = {}): Pr
   const now = Date.now();
   if (hit && !opts.fresh && now - hit.at < 45_000) return hit.v;
   const v = Promise.race([
-    aholo<WorldDetail>("GET", `/global/world/v1/${worldId}`),
+    call(() => worldClient().retrieve(worldId)) as Promise<WorldDetail>,
     new Promise<null>((r) => setTimeout(() => r(null), 8000)),
   ]).catch(() => null);
   memo.set(worldId, { at: now, v });
@@ -128,12 +130,8 @@ export function worldQueue(): Promise<WorldDetail[] | null> {
   if (isMockMode()) return Promise.resolve([]);
   if (queueMemo && Date.now() - queueMemo.at < 45_000) return queueMemo.v;
   const v = Promise.race([
-    aholo<{ result?: WorldDetail[] }>("POST", "/global/world/v1/list", {
-      pageNum: 0,
-      pageSize: 50,
-      statusList: ["PENDING", "PREPROCESSING", "RUNNING"],
-    }).then((r) =>
-      (r.result ?? [])
+    call(() => worldClient().list({ pageNum: 0, pageSize: 50, statusList: ["PENDING", "PREPROCESSING", "RUNNING"] })).then((r) =>
+      ((r.result ?? []) as WorldDetail[])
         .filter((w) => IN_PROGRESS.has(w.status ?? ""))
         .sort((a, b) => (a.createTime ?? 0) - (b.createTime ?? 0)),
     ),
@@ -173,9 +171,11 @@ export async function createWorldGeneration(input: { name: string; prompt: strin
   };
   if (job.mode === "live") {
     await assertQueueFree();
-    const r = await aholo<{ worldId: string }>("POST", "/global/world/v1/generations", {
-      name: input.name, prompt: input.prompt, ...(input.imageUrl ? { resources: [{ url: input.imageUrl, type: "image" }] } : {}),
-    });
+    const r = await call(() =>
+      worldClient().generations.create({
+        name: input.name, prompt: input.prompt, ...(input.imageUrl ? { resources: [{ url: input.imageUrl, type: "image" as const }] } : {}),
+      }),
+    );
     job.worldId = r.worldId;
     queueMemo = null;
   }
@@ -204,12 +204,14 @@ export async function createRoomScan(input: { name: string; files: { buf: Buffer
   try {
     const urls: string[] = [];
     for (const f of input.files) urls.push(await uploadAsset(f.buf, f.filename));
-    const r = await aholo<{ worldId: string }>("POST", "/global/world/v1/reconstructions", {
-      name: input.name,
-      resources: urls.map((url) => ({ url, type: video ? "video" : "image" })),
-      taskQuality: input.quality ?? "low",
-      scene: "space",
-    });
+    const r = await call(() =>
+      worldClient().reconstructions.create({
+        name: input.name,
+        resources: urls.map((url) => ({ url, type: video ? ("video" as const) : ("image" as const) })),
+        taskQuality: input.quality ?? "low",
+        scene: "space",
+      }),
+    );
     job.worldId = r.worldId;
     job.status = "PENDING";
     queueMemo = null;
