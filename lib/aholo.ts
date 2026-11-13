@@ -306,7 +306,14 @@ export async function createJob(input: {
   return advanceJob(id);
 }
 
-const locks = new Set<string>();
+/** Per-instance advance locks with expiry, so a crashed/hung request can't wedge a job on a warm instance. */
+const lockMap = new Map<string, number>();
+const LOCK_MS = 150_000;
+const locks = {
+  has: (id: string) => (lockMap.get(id) ?? 0) > Date.now(),
+  add: (id: string) => void lockMap.set(id, Date.now() + LOCK_MS),
+  delete: (id: string) => void lockMap.delete(id),
+};
 
 /** Advance a job by at most one transition. Safe to call on every poll. */
 export async function advanceJob(id: string): Promise<Job> {
@@ -687,6 +694,10 @@ async function advanceMock(job: Job) {
 }
 
 async function finish(job: Job) {
+  // Concurrent polls on different instances can race on pendingAnims; re-collect every clip that made it to the store.
+  for (const m of MOVES) {
+    if (!job.files.anims[m] && (await fighterFileExists(job.id, `anim-${m}.glb`))) job.files.anims[m] = `anim-${m}.glb`;
+  }
   enter(job, "done");
   const fighter = jobToFighter(job);
   await writeFighterFile(job.id, "fighter.json", Buffer.from(JSON.stringify(fighter, null, 2), "utf8"));
@@ -777,10 +788,16 @@ async function downloadToTmp(id: string, url: string, file: string): Promise<str
   return dest;
 }
 
+/** Download with a hard timeout; timeouts/5xx surface as transient errors and are retried on the next poll. */
 async function fetchToBuffer(url: string, file: string): Promise<Buffer> {
-  const res = await fetch(url);
-  if (!res.ok) throw new AholoError(`Download failed ${res.status} for ${file}`);
-  return Buffer.from(await res.arrayBuffer());
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(100_000) });
+    if (!res.ok) throw new AholoError(`Download failed ${res.status} for ${file}`, undefined, res.status >= 500 ? res.status : undefined);
+    return Buffer.from(await res.arrayBuffer());
+  } catch (e) {
+    if (e instanceof AholoError) throw e;
+    throw new AholoError(`Download timed out / network error for ${file}: ${e instanceof Error ? e.message : e}`, "NETWORK", 503);
+  }
 }
 
 function firstContent(outputs?: { content: string | null }[]) {
