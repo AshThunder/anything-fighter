@@ -9,6 +9,7 @@ import { CLIP_CANDIDATES, LOOPING, MOVES, type Move } from "@/lib/moves";
 import { ATTACKS, sim } from "@/lib/game/sim";
 
 const TARGET_HEIGHT = 1.8;
+const HIT_RED = new THREE.Color(0.55, 0.06, 0.02);
 const tmpColor = new THREE.Color();
 
 function findClip(clips: THREE.AnimationClip[], move: Move): THREE.AnimationClip | undefined {
@@ -87,7 +88,10 @@ export function Fighter({ def, index }: { def: FighterDef; index: 0 | 1 }) {
   const current = useRef<{ move: Move | null; action: THREE.AnimationAction | null }>({ move: null, action: null });
   const now = useRef(0);
   const lastX = useRef(0);
-  const baseEmissive = useMemo(() => materials.map((m) => m.emissive?.clone() ?? new THREE.Color(0)), [materials]);
+  const matBase = useMemo(
+    () => materials.map((m) => ({ emissive: m.emissive?.clone() ?? new THREE.Color(0), intensity: m.emissiveIntensity ?? 1, color: m.color.clone() })),
+    [materials],
+  );
 
   useFrame((_, dt) => {
     const f = sim.f[index];
@@ -237,13 +241,23 @@ export function Fighter({ def, index }: { def: FighterDef; index: 0 | 1 }) {
     p.scale.z += (sxz - p.scale.z) * s;
 
     // ── hit flash ──
-    const fl = f.flash;
+    // Brief warm tint: multiply albedo toward red and add a little red emissive. Never raise emissiveIntensity
+    // (textured emissive maps + bloom blew fighters out into white ghosts) and restore exactly when it ends.
+    const fl = Math.min(1, f.flash);
     for (let i = 0; i < materials.length; i++) {
       const m = materials[i];
-      if (!m.emissive) continue;
-      tmpColor.copy(baseEmissive[i]).lerp(new THREE.Color(1, 0.35, 0.1), fl);
-      m.emissive.copy(tmpColor);
-      m.emissiveIntensity = fl > 0 ? 1 + fl * 2 : 1;
+      const b = matBase[i];
+      if (fl <= 0.001) {
+        if (!m.color.equals(b.color)) m.color.copy(b.color);
+        if (m.emissive && !m.emissive.equals(b.emissive)) m.emissive.copy(b.emissive);
+        m.emissiveIntensity = b.intensity;
+        continue;
+      }
+      m.color.copy(b.color).multiply(tmpColor.setRGB(1, 1 - 0.65 * fl, 1 - 0.7 * fl));
+      if (m.emissive) {
+        m.emissive.copy(b.emissive).lerp(HIT_RED, (m.emissiveMap ? 0.25 : 0.45) * fl);
+        m.emissiveIntensity = b.intensity;
+      }
     }
   });
 

@@ -31,7 +31,7 @@ const BLOCKED = (f: string) => f === "job.json" || f.endsWith("-log.json") || f.
  */
 export const maxDuration = 60;
 
-export async function GET(_req: Request, ctx: { params: Promise<{ path: string[] }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   const parts = (await ctx.params).path;
   let buf: Buffer | null = null;
   let ext = "";
@@ -57,6 +57,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ path: string[]
         if (!up?.ok || !up.body) return new Response("Upstream error", { status: 502 });
         return new Response(up.body, {
           headers: { "Content-Type": up.headers.get("content-type") ?? TYPES[ext] ?? "image/jpeg", "Cache-Control": "public, max-age=600" },
+        });
+      }
+      if (new URL(req.url).searchParams.has("proxy")) {
+        // fallback for devices that can't fetch the Aholo CDN directly: stream the splat through our origin
+        const up = await fetch(url).catch(() => null);
+        if (!up?.ok || !up.body) return new Response("Upstream error", { status: 502 });
+        const len = up.headers.get("content-length");
+        return new Response(up.body, {
+          headers: {
+            "Content-Type": "application/octet-stream",
+            ...(len ? { "Content-Length": len } : {}),
+            "Cache-Control": "public, max-age=600",
+            "Access-Control-Allow-Origin": "*",
+          },
         });
       }
       return Response.redirect(url, 302);

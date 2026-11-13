@@ -2,6 +2,7 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { BUILTIN_ARENAS, type ArenaDef } from "./arenas";
+import { splatPlacement } from "./splat-placement";
 import { isWorldFailed, isWorldStuck, listWorldJobIds, loadWorldJob, worldDetail, type WorldDetail } from "./world";
 
 export const ARENA_ROOT = path.join(process.cwd(), "public", "arenas");
@@ -49,14 +50,20 @@ async function resolveShippedPending(id: string, ids: string[]): Promise<ArenaDe
     const splat = d.assets?.splats?.urls?.spzPath ? "world.spz" : d.assets?.splats?.urls?.plyPath ? "world.ply" : undefined;
     const pano = d.assets?.imagery?.panoUrl ? "pano.jpg" : undefined;
     if (!splat && !pano) return null;
+    const upAxis = d.assets?.semanticsMetadata?.upAxis === "Y" ? "Y" : "Z";
+    const direct = d.assets?.splats?.urls?.spzPath ?? d.assets?.splats?.urls?.plyPath;
+    const place = splat ? await splatPlacement(id, worldId, d.assets?.splats?.urls?.spzPath, upAxis) : null;
     return {
       id,
       name,
       prompt,
       worldId,
       source: reality ? "reality" : "spatialgen",
-      upAxis: d.assets?.semanticsMetadata?.upAxis === "Y" ? "Y" : "Z",
+      upAxis,
+      ...(place ?? {}),
       splatUrl: splat ? arenaAsset(id, splat) : undefined,
+      // phones: direct CDN first (no redirect hop), then stream through our origin
+      splatUrls: splat ? [...(direct ? [direct] : []), `${arenaAsset(id, splat)}?proxy=1`] : undefined,
       panoUrl: pano ? arenaAsset(id, pano) : undefined,
       cover: pano ? arenaAsset(id, pano) : undefined,
       note: kind,

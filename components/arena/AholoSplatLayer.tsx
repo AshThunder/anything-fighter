@@ -23,21 +23,32 @@ const importStatic = new Function("u", "return import(u)") as (u: string) => Pro
 
 const ZERO: Vec3 = [0, 0, 0];
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export function AholoSplatLayer({
-  url,
+  urls,
   upAxis = "-Y",
   origin = ZERO,
   scale = 1,
   yaw = 0,
+  onFail,
 }: {
-  url: string;
+  /** tried in order (direct CDN URL, then same-origin proxy); each gets a retry */
+  urls: string[];
   upAxis?: "Z" | "-Y" | "Y";
   origin?: Vec3;
   scale?: number;
   yaw?: number;
+  /** every URL failed (or the viewer can't start on this device): caller swaps in a fallback backdrop */
+  onFail?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState("loading splat…");
+  const [loading, setLoading] = useState(true);
+  const failRef = useRef(onFail);
+  useEffect(() => {
+    failRef.current = onFail;
+  }, [onFail]);
+  const key = urls.join("|");
 
   useEffect(() => {
     let disposed = false;
@@ -65,18 +76,33 @@ export function AholoSplatLayer({
           TAA: { enabled: false },
         },
       });
-      const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
-      const type =
-        ext === "ply" ? A.SplatLoader.SplatFileType.PLY : ext === "spz" ? A.SplatLoader.SplatFileType.SPZ : A.SplatLoader.SplatFileType.SOG;
-      try {
-        const data = await A.SplatLoader.parseSplatData(type, new URL(url, window.location.href).href, A.SplatLoader.SplatPackType.Compressed);
-        const splat = await A.SplatUtils.createSplat(data);
-        if (disposed) return;
-        viewer.getScene().add(splat);
-        setStatus("");
-      } catch (e) {
-        console.error("[aholo-viewer] splat load failed", e);
-        setStatus(`splat failed: ${e instanceof Error ? e.message || e.name : JSON.stringify(e)}`);
+      // Each URL gets two attempts (mobile networks drop big fetches); absolute URLs because the loader
+      // fetches from a Blob-URL worker where relative paths don't resolve.
+      let loaded = false;
+      for (const url of key.split("|")) {
+        const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
+        const type =
+          ext === "ply" ? A.SplatLoader.SplatFileType.PLY : ext === "spz" ? A.SplatLoader.SplatFileType.SPZ : A.SplatLoader.SplatFileType.SOG;
+        for (let attempt = 0; attempt < 2 && !loaded && !disposed; attempt++) {
+          try {
+            const data = await A.SplatLoader.parseSplatData(type, new URL(url, window.location.href).href, A.SplatLoader.SplatPackType.Compressed);
+            const splat = await A.SplatUtils.createSplat(data);
+            if (disposed) return;
+            viewer.getScene().add(splat);
+            loaded = true;
+          } catch (e) {
+            console.warn(`[aholo-viewer] splat load failed (${url}, attempt ${attempt + 1})`, e);
+            await sleep(800 * (attempt + 1));
+          }
+        }
+        if (loaded) break;
+      }
+      if (disposed) return;
+      setLoading(false);
+      if (!loaded) {
+        viewer.destroy();
+        failRef.current?.();
+        return;
       }
       const cy = Math.cos(-yaw), sy = Math.sin(-yaw);
       const map = (v: Vec3) => {
@@ -102,18 +128,28 @@ export function AholoSplatLayer({
         window.removeEventListener("resize", onResize);
         viewer.destroy();
       };
-    })().catch((e) => setStatus(`viewer failed: ${e instanceof Error ? e.message : e}`));
+    })().catch((e) => {
+      console.warn("[aholo-viewer] viewer failed", e);
+      if (!disposed) {
+        setLoading(false);
+        failRef.current?.();
+      }
+    });
     return () => {
       disposed = true;
       cancelAnimationFrame(raf);
       destroy?.();
     };
-  }, [url, upAxis, origin, scale, yaw]);
+  }, [key, upAxis, origin, scale, yaw]);
 
   return (
     <div className="absolute inset-0">
       <div ref={ref} className="absolute inset-0" />
-      {status && <div className="absolute bottom-3 left-3 text-xs text-orange-200/70">{status}</div>}
+      {loading && (
+        <div className="pointer-events-none absolute inset-x-0 top-[38%] text-center font-arcade text-xs tracking-widest text-orange-200/60 animate-pulse">
+          Loading arena…
+        </div>
+      )}
     </div>
   );
 }

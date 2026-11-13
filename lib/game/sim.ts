@@ -70,6 +70,8 @@ export const sim = {
   f: [newFighter(-1.6, 1), newFighter(1.6, -1)] as [FighterSim, FighterSim],
   fx: { shake: 0, hitstop: 0, slowmo: 1, sparks: [] } as FxState,
   time: 60,
+  /** half-width of the walkable fight line (per arena: generated worlds can be narrower) */
+  half: ARENA_HALF,
   /** camera state shared with the Aholo Viewer splat layer */
   cam: { pos: [0, 1.6, 5] as [number, number, number], target: [0, 1.1, 0] as [number, number, number], fov: 40 },
 };
@@ -137,7 +139,7 @@ export function step(dt: number, fighting: boolean): HitEvent[] {
     if (fighting && (me.state === "walk" || me.state === "block")) v = me.moveDir * (me.state === "block" ? BLOCK_WALK : WALK);
     me.x += (v + me.kv) * sdt;
     me.kv *= Math.pow(0.002, sdt);
-    me.x = Math.max(-ARENA_HALF, Math.min(ARENA_HALF, me.x));
+    me.x = Math.max(-sim.half, Math.min(sim.half, me.x));
 
     // attacks
     if ((me.state === "punch" || me.state === "kick") && !me.connected) {
