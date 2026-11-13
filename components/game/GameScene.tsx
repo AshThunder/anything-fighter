@@ -12,7 +12,7 @@ import { useGame } from "@/lib/game/store";
 import { ARENA_HALF, resetSim, sim, step } from "@/lib/game/sim";
 import { attachInput, readPlayerInput, setTwoPlayer } from "@/lib/game/input";
 import { duckMusic, sfx, startMusic, stopMusic } from "@/lib/game/audio";
-import { startClip, stopClip } from "@/lib/game/recorder";
+import { pumpClip, startClip, stopClip } from "@/lib/game/recorder";
 
 const canvases = () => Array.from(document.querySelectorAll<HTMLCanvasElement>("[data-game-root] canvas"));
 import { resetAI, runAI } from "@/lib/game/ai";
@@ -103,6 +103,14 @@ function PhaseDriver() {
   return null;
 }
 
+/** Blit stacked canvases after the fighters have been rendered this frame. */
+function ClipPump() {
+  useFrame(() => {
+    queueMicrotask(pumpClip);
+  });
+  return null;
+}
+
 export default function GameScene() {
   useEffect(() => {
     // test hook for screenshots / demo recording: /fight?...&debug=1 exposes the sim
@@ -141,13 +149,20 @@ export default function GameScene() {
       )}
       <Canvas
         key={glKey}
-        className="!absolute inset-0"
+        className="!absolute inset-0 !bg-transparent"
+        style={{ background: "transparent" }}
         shadows
         dpr={mobile ? [1, 1.5] : [1, 2]}
         camera={{ fov: 40, position: [0, 1.6, 5.5], near: 0.05, far: 200 }}
         gl={{ alpha: !!splat, preserveDrawingBuffer: true, antialias: !mobile, powerPreference: "high-performance" }}
-        onCreated={({ gl }) => {
+        onCreated={({ gl, scene }) => {
           const el = gl.domElement;
+          el.dataset.gameLayer = "fighters";
+          el.style.background = "transparent";
+          if (splat) {
+            gl.setClearColor(0x000000, 0);
+            scene.background = null;
+          }
           let restored = true;
           el.addEventListener("webglcontextlost", (e) => {
             e.preventDefault();
@@ -184,6 +199,7 @@ export default function GameScene() {
         <DashTrails />
         <CameraRig />
         <GameLoop />
+        <ClipPump />
         {!splat && (
           <EffectComposer>
             {/* flat look: no vignette (radial edge darkening) since the 13 Nov UI pass; bloom glow only */}

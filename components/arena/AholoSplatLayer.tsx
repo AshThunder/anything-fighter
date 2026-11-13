@@ -152,6 +152,7 @@ export function AholoSplatLayer({
       const viewer = A.createViewer("arena-splat", el, { alpha: false, antialiasing: false, preserveDrawingBuffer: true });
       viewerRef = viewer;
       const canvas = el.querySelector("canvas");
+      if (canvas) canvas.dataset.gameLayer = "splat";
       const onLost = (e: Event) => {
         e.preventDefault();
         fail("webglcontextlost");
@@ -274,7 +275,7 @@ export function AholoSplatLayer({
   }, [key, upAxis, origin, scale, yaw]);
 
   return (
-    <div className="absolute inset-0" data-splat-state={state}>
+    <div className="absolute inset-0" data-game-layer="splat" data-splat-state={state}>
       {state !== "ready" && (
         <>
           <div className="absolute inset-0 bg-panel bg-cover bg-center" style={poster ? { backgroundImage: `url(${poster})` } : undefined} />

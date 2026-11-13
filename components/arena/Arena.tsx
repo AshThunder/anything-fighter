@@ -141,6 +141,7 @@ function PanoArena({ url }: { url: string }) {
 
 /** Transparent shadow catcher so fighters stay grounded over the splat layer. */
 function SplatFloor() {
+  useSceneLook(null, null);
   return (
     <mesh rotation-x={-Math.PI / 2} receiveShadow>
       <circleGeometry args={[7, 64]} />

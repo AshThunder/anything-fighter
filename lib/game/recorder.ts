@@ -7,8 +7,9 @@ import { useGame } from "./store";
 
 let rec: MediaRecorder | null = null;
 let chunks: Blob[] = [];
-let raf = 0;
 let comp: HTMLCanvasElement | null = null;
+let compCtx: CanvasRenderingContext2D | null = null;
+let getSources: (() => HTMLCanvasElement[]) | null = null;
 let lastClip: { url: string; type: string; ext: string } | null = null;
 const listeners = new Set<() => void>();
 
@@ -28,20 +29,24 @@ function pickType() {
 function drawHud(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const s = useGame.getState();
   if (!s.fighters) return;
-  const pad = w * 0.03, bw = w * 0.38, bh = h * 0.028;
-  ctx.font = `700 ${Math.round(h * 0.026)}px system-ui, sans-serif`;
+  const pad = Math.max(w * 0.03, 12);
+  const fontPx = Math.max(12, Math.round(h * 0.026));
+  const nameY = pad + fontPx; // keep names fully on-screen in tall portrait clips
+  const barY = nameY + 4;
+  const bw = w * 0.38, bh = h * 0.028;
+  ctx.font = `700 ${fontPx}px system-ui, sans-serif`;
   ctx.textBaseline = "bottom";
   for (const i of [0, 1] as const) {
     const x = i === 0 ? pad : w - pad - bw;
     ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(x, pad + h * 0.035, bw, bh);
+    ctx.fillRect(x, barY, bw, bh);
     const hp = Math.max(0, s.hp[i]) / 100;
     ctx.fillStyle = hp > 0.3 ? "#f59e0b" : "#ef4444";
-    if (i === 0) ctx.fillRect(x, pad + h * 0.035, bw * hp, bh);
-    else ctx.fillRect(x + bw * (1 - hp), pad + h * 0.035, bw * hp, bh);
+    if (i === 0) ctx.fillRect(x, barY, bw * hp, bh);
+    else ctx.fillRect(x + bw * (1 - hp), barY, bw * hp, bh);
     ctx.fillStyle = "#fff7ed";
     ctx.textAlign = i === 0 ? "left" : "right";
-    ctx.fillText(s.fighters[i].name.toUpperCase(), i === 0 ? x : x + bw, pad + h * 0.03);
+    ctx.fillText(s.fighters[i].name.toUpperCase(), i === 0 ? x : x + bw, nameY);
   }
   if (s.phase === "ko" || s.phase === "victory") {
     ctx.textAlign = "center";
@@ -61,6 +66,31 @@ function drawHud(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillText("ANYTHING FIGHTER · made with Aholo Lux3D", w - pad, h - pad);
 }
 
+/** Splat backdrop first, fighters on top. Unlabelled canvases stay at the bottom. */
+function layerRank(c: HTMLCanvasElement) {
+  if (c.dataset.gameLayer === "fighters") return 1;
+  return 0;
+}
+
+/** Composite current game canvases + HUD. Called after the R3F frame so WebGL buffers are intact. */
+export function pumpClip() {
+  if (!comp || !compCtx || !getSources) return;
+  const { width, height } = comp;
+  if (!width || !height) return;
+  compCtx.fillStyle = "#0d0b09";
+  compCtx.fillRect(0, 0, width, height);
+  const layers = [...getSources()].sort((a, b) => layerRank(a) - layerRank(b));
+  for (const c of layers) {
+    if (!c.width || !c.height) continue;
+    try {
+      compCtx.drawImage(c, 0, 0, width, height);
+    } catch {
+      /* tainted or lost context: skip this layer */
+    }
+  }
+  drawHud(compCtx, width, height);
+}
+
 /** Start recording the given canvases (bottom → top). Safe to call repeatedly. */
 export function startClip(sources: () => HTMLCanvasElement[]) {
   if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return;
@@ -71,15 +101,13 @@ export function startClip(sources: () => HTMLCanvasElement[]) {
   comp = document.createElement("canvas");
   comp.width = Math.round(first.width * scale) & ~1;
   comp.height = Math.round(first.height * scale) & ~1;
-  const ctx = comp.getContext("2d")!;
-  const tick = () => {
-    ctx.fillStyle = "#0d0b09";
-    ctx.fillRect(0, 0, comp!.width, comp!.height);
-    for (const c of sources()) ctx.drawImage(c, 0, 0, comp!.width, comp!.height);
-    drawHud(ctx, comp!.width, comp!.height);
-    raf = requestAnimationFrame(tick);
-  };
-  tick();
+  compCtx = comp.getContext("2d");
+  if (!compCtx) {
+    comp = null;
+    return;
+  }
+  getSources = sources;
+  pumpClip();
   const type = pickType();
   try {
     rec = new MediaRecorder(comp.captureStream(30), { mimeType: type || undefined, videoBitsPerSecond: 5_000_000 });
@@ -90,7 +118,6 @@ export function startClip(sources: () => HTMLCanvasElement[]) {
   chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   rec.onstop = () => {
-    cancelAnimationFrame(raf);
     if (!chunks.length) return;
     const t = rec?.mimeType || type || "video/webm";
     if (lastClip) URL.revokeObjectURL(lastClip.url);
@@ -105,10 +132,14 @@ export function stopClip(discard = false) {
   if (discard) {
     rec.ondataavailable = null;
     rec.onstop = null;
-    cancelAnimationFrame(raf);
   }
   if (rec.state !== "inactive") rec.stop();
   rec = null;
+  if (discard) {
+    getSources = null;
+    comp = null;
+    compCtx = null;
+  }
 }
 
 /** One-frame KO card (PNG data URL): game frame + HUD + optional RenderCloud poster panel. */
@@ -121,7 +152,8 @@ export async function snapshotCard(sources: HTMLCanvasElement[], posterUrl?: str
   ctx.fillStyle = "#0d0b09";
   ctx.fillRect(0, 0, W, H);
   const gw = posterUrl ? W * 0.68 : W;
-  for (const s of sources) {
+  const ordered = [...sources].sort((a, b) => layerRank(a) - layerRank(b));
+  for (const s of ordered) {
     // cover-crop the game frame into the left panel
     const sr = s.width / s.height, dr = gw / H;
     const sw = sr > dr ? s.height * dr : s.width, sh = sr > dr ? s.height : s.width / dr;
