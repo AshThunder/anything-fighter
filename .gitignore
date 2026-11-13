@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # research raw
-refs/lux3D-docs.html
+refs/lux3d-docs.html
 # rehosted generated fighters (large)
 public/fighters/gen-*
 public/fighters/**/*.orig.glb

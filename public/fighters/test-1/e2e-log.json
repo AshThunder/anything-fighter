@@ -1,0 +1,168 @@
+{
+  "id": "test-1",
+  "startedAt": "2026-11-12T23:28:18.261Z",
+  "steps": [
+    {
+      "name": "upload (OUS)",
+      "startedAt": "2026-11-12T23:28:18.263Z",
+      "blockSize": 5242880,
+      "globalDomain": "https://ous-sg.kujiale.com",
+      "url": "https://holo-cos.aholo3d.cn/resource/platform/temp/2026/11/12/NL3EP5IKQRHTGAABAAAAADI8.jpg",
+      "ms": 4675
+    },
+    {
+      "name": "multimodal-to-image (mascot)",
+      "startedAt": "2026-11-12T23:28:22.939Z",
+      "taskId": 6932706,
+      "polls": [
+        {
+          "t": 1050,
+          "status": 1
+        },
+        {
+          "t": 7322,
+          "status": 1
+        },
+        {
+          "t": 13695,
+          "status": 1
+        },
+        {
+          "t": 19932,
+          "status": 1
+        },
+        {
+          "t": 26170,
+          "status": 1
+        },
+        {
+          "t": 32656,
+          "status": 1
+        },
+        {
+          "t": 39044,
+          "status": 3
+        }
+      ],
+      "output": [
+        "https://qhmtl-cos.kujiale.com/materialtexture/195/201/025aee2e190a6d2f183ec5417e551754c866892.jpg"
+      ],
+      "ms": 42883
+    },
+    {
+      "name": "img-to-3d G1-Turbo",
+      "startedAt": "2026-11-12T23:29:05.823Z",
+      "taskId": 6932736,
+      "polls": [
+        {
+          "t": 1355,
+          "status": 1
+        },
+        {
+          "t": 12579,
+          "status": 1
+        },
+        {
+          "t": 23935,
+          "status": 1
+        },
+        {
+          "t": 35345,
+          "status": 1
+        },
+        {
+          "t": 46783,
+          "status": 1
+        },
+        {
+          "t": 58033,
+          "status": 3
+        }
+      ],
+      "output": [
+        "https://qhsmodel.kujiale.com/genesis3d/inference/20261112/7d80c21e2ace41fda9b8d9f51680575f/results/tex_mesh/attempt-1/tex_mesh.glb"
+      ],
+      "download": {
+        "file": "mesh.glb",
+        "bytes": 10711056
+      },
+      "ms": 66060
+    },
+    {
+      "name": "humanoid auto-rig",
+      "startedAt": "2026-11-12T23:30:11.884Z",
+      "taskId": 6932757,
+      "polls": [
+        {
+          "t": 1255,
+          "status": 1
+        },
+        {
+          "t": 12743,
+          "status": 1
+        },
+        {
+          "t": 24071,
+          "status": 1
+        },
+        {
+          "t": 35435,
+          "status": 1
+        },
+        {
+          "t": 46839,
+          "status": 1
+        },
+        {
+          "t": 58346,
+          "status": 1
+        },
+        {
+          "t": 69681,
+          "status": 3
+        }
+      ],
+      "output": [
+        "https://qhsmodel.kujiale.com/ai-generate/3/6932771-1.glb"
+      ],
+      "download": {
+        "file": "rigged.glb",
+        "bytes": 21848364
+      },
+      "ms": 75950
+    },
+    {
+      "name": "animation retarget (Idle_Loop, Punch_Jab)",
+      "startedAt": "2026-11-12T23:31:27.834Z",
+      "taskId": 6932798,
+      "polls": [
+        {
+          "t": 1314,
+          "status": 1
+        },
+        {
+          "t": 12568,
+          "status": 3
+        }
+      ],
+      "output": [
+        "{\"actions\":[{\"animation_id\":\"Idle_Loop\",\"status\":\"success\",\"animationGlbUrl\":\"https://qhsmodel.kujiale.com/ha/open/v1/1a11a6f7-f912-47bb-8b14-dc99c960512a/animation.glb\"},{\"animation_id\":\"Punch_Jab\",\"status\":\"success\",\"animationGlbUrl\":\"https://qhsmodel.kujiale.com/ha/open/v1/1db0919f-e83e-472d-956e-b5188247576b/animation.glb\"}]}"
+      ],
+      "actions": [
+        {
+          "animation_id": "Idle_Loop",
+          "status": "success",
+          "animationGlbUrl": "https://qhsmodel.kujiale.com/ha/open/v1/1a11a6f7-f912-47bb-8b14-dc99c960512a/animation.glb"
+        },
+        {
+          "animation_id": "Punch_Jab",
+          "status": "success",
+          "animationGlbUrl": "https://qhsmodel.kujiale.com/ha/open/v1/1db0919f-e83e-472d-956e-b5188247576b/animation.glb"
+        }
+      ],
+      "ms": 32820
+    }
+  ],
+  "finishedAt": "2026-11-12T23:32:00.655Z",
+  "totalMs": 222388
+}

@@ -1,0 +1,15 @@
+{
+  "id": "cactus",
+  "res": "1080x1350",
+  "meshId": "Y3EJYJUTQ34VQPTUK4888888",
+  "startedAt": "2026-11-13T00:21:47.206Z",
+  "steps": [
+    {
+      "name": "offline render 1080x1350 (v5)",
+      "startedAt": "2026-11-13T00:21:47.207Z",
+      "taskId": "L1D0S437ENDO7U2AOAUWIBQALUFX73WYYI8",
+      "ms": 127605
+    }
+  ],
+  "finishedAt": "2026-11-13T00:23:55.462Z"
+}

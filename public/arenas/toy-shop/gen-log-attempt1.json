@@ -1,0 +1,12 @@
+{
+  "id": "toy-shop",
+  "prompt": "A large old toy shop at midnight, wide open empty wooden floor in the centre, tall shelves of colourful toys, plush animals, model trains along the walls, moonlight through big windows mixed with warm lamp glow, magical, game arena",
+  "startedAt": "2026-11-13T00:25:26.628Z",
+  "steps": [
+    {
+      "name": "world generation create",
+      "startedAt": "2026-11-13T00:25:26.628Z",
+      "ms": 500
+    }
+  ]
+}

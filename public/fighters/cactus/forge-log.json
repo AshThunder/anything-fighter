@@ -1,0 +1,88 @@
+{
+  "id": "cactus",
+  "object": "a saguaro-style green cactus in a terracotta pot",
+  "startedAt": "2026-11-12T23:46:08.159Z",
+  "steps": [
+    {
+      "name": "source photo (multimodal-to-image, text only)",
+      "startedAt": "2026-11-12T23:46:08.159Z",
+      "prompt": "Studio product photo of a saguaro-style green cactus in a terracotta pot, single object centred, full object visible, plain white background, soft even lighting, photorealistic, no text, no people.",
+      "taskId": "6933087",
+      "ms": 74027
+    },
+    {
+      "name": "mascot (multimodal-to-image, img+prompt)",
+      "startedAt": "2026-11-12T23:47:22.187Z",
+      "taskId": "6933162",
+      "ms": 41586
+    },
+    {
+      "name": "img-to-3d G1-Turbo",
+      "startedAt": "2026-11-12T23:48:03.775Z",
+      "taskId": "6933179",
+      "ms": 58260
+    },
+    {
+      "name": "humanoid auto-rig",
+      "startedAt": "2026-11-12T23:49:02.036Z",
+      "taskId": "6933208",
+      "ms": 114664
+    },
+    {
+      "name": "retarget 10 presets (separate, in place)",
+      "startedAt": "2026-11-12T23:50:56.700Z",
+      "taskId": "6933246",
+      "actions": [
+        {
+          "id": "Idle_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Walk_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Jab",
+          "status": "success"
+        },
+        {
+          "id": "Melee_Hook",
+          "status": "success"
+        },
+        {
+          "id": "Sword_Block",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Chest",
+          "status": "success"
+        },
+        {
+          "id": "Death01",
+          "status": "success"
+        },
+        {
+          "id": "Dance_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Cross",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Knockback",
+          "status": "success"
+        }
+      ],
+      "ms": 31560
+    },
+    {
+      "name": "optimise fighter GLB",
+      "startedAt": "2026-11-12T23:51:28.262Z",
+      "bytes": 2992948,
+      "ms": 643
+    }
+  ],
+  "finishedAt": "2026-11-12T23:51:28.906Z",
+  "totalMs": 320747
+}

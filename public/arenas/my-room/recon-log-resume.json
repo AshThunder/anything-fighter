@@ -1,0 +1,21 @@
+{
+  "id": "my-room",
+  "quality": "low",
+  "resumed": true,
+  "startedAt": "2026-11-13T01:02:26.142Z",
+  "steps": [
+    {
+      "name": "reconstruction (poll to SUCCEEDED)",
+      "startedAt": "2026-11-13T01:02:26.143Z",
+      "taskId": "3FO4K4V8HJDA",
+      "statusChanges": [
+        {
+          "t": 1264,
+          "status": "PENDING",
+          "progress": 0
+        }
+      ]
+    }
+  ],
+  "worldId": "3FO4K4V8HJDA"
+}

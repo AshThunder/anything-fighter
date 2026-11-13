@@ -1,0 +1,15 @@
+{
+  "id": "duck",
+  "res": "1080x1350",
+  "meshId": "Y3ELBTETQY6B4PTUL4888888",
+  "startedAt": "2026-11-13T00:18:35.958Z",
+  "steps": [
+    {
+      "name": "offline render 1080x1350 (v5)",
+      "startedAt": "2026-11-13T00:18:35.959Z",
+      "taskId": "L1D0S437ENDO7U266IUWIKQMLUFX73W3PI8",
+      "ms": 178013
+    }
+  ],
+  "finishedAt": "2026-11-13T00:21:34.596Z"
+}

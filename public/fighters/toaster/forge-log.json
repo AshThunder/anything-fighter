@@ -1,0 +1,88 @@
+{
+  "id": "toaster",
+  "object": "a retro chrome and red two-slot kitchen toaster with two slices of toast sticking out",
+  "startedAt": "2026-11-12T23:46:08.158Z",
+  "steps": [
+    {
+      "name": "source photo (multimodal-to-image, text only)",
+      "startedAt": "2026-11-12T23:46:08.158Z",
+      "prompt": "Studio product photo of a retro chrome and red two-slot kitchen toaster with two slices of toast sticking out, single object centred, full object visible, plain white background, soft even lighting, photorealistic, no text, no people.",
+      "taskId": "6933084",
+      "ms": 40943
+    },
+    {
+      "name": "mascot (multimodal-to-image, img+prompt)",
+      "startedAt": "2026-11-12T23:46:49.102Z",
+      "taskId": "6933133",
+      "ms": 41578
+    },
+    {
+      "name": "img-to-3d G1-Turbo",
+      "startedAt": "2026-11-12T23:47:30.680Z",
+      "taskId": "6933173",
+      "ms": 62917
+    },
+    {
+      "name": "humanoid auto-rig",
+      "startedAt": "2026-11-12T23:48:33.598Z",
+      "taskId": "6933187",
+      "ms": 109074
+    },
+    {
+      "name": "retarget 10 presets (separate, in place)",
+      "startedAt": "2026-11-12T23:50:22.672Z",
+      "taskId": "6933232",
+      "actions": [
+        {
+          "id": "Idle_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Walk_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Jab",
+          "status": "success"
+        },
+        {
+          "id": "Melee_Hook",
+          "status": "success"
+        },
+        {
+          "id": "Sword_Block",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Chest",
+          "status": "success"
+        },
+        {
+          "id": "Death01",
+          "status": "success"
+        },
+        {
+          "id": "Dance_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Cross",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Knockback",
+          "status": "success"
+        }
+      ],
+      "ms": 53652
+    },
+    {
+      "name": "optimise fighter GLB",
+      "startedAt": "2026-11-12T23:51:16.325Z",
+      "bytes": 2875356,
+      "ms": 735
+    }
+  ],
+  "finishedAt": "2026-11-12T23:51:17.060Z",
+  "totalMs": 308902
+}
