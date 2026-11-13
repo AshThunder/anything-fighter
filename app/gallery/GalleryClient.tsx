@@ -21,7 +21,7 @@ export default function GalleryClient() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(242,127,13,0.14),transparent_60%)]" />
       <div className="relative mx-auto flex max-w-6xl flex-col gap-6 px-5 py-6">
         <header className="flex items-center justify-between">
-          <Link href="/" className="font-display text-lg font-bold tracking-tight">
+          <Link href="/" className="font-arcade text-lg leading-none tracking-tight">
             ANYTHING<span className="text-orange-500">FIGHTER</span>
           </Link>
           <Link href="/" className="rounded-xl bg-orange-500 px-4 py-2 font-display text-sm font-bold text-black">
@@ -29,7 +29,7 @@ export default function GalleryClient() {
           </Link>
         </header>
         <div>
-          <h1 className="font-display text-4xl font-black italic">Gallery</h1>
+          <h1 className="arcade-title text-4xl">Gallery</h1>
           <p className="text-sm text-orange-100/60">
             Every fighter here started as one photo. Lux3D re-imagined it, built a PBR mesh, rigged it and retargeted 10 moves; RenderCloud shot the poster. Each card lists the Aholo services that built it.
           </p>

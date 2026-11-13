@@ -201,7 +201,7 @@ export default function ForgeClient() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(242,127,13,0.16),transparent_60%)]" />
       <div className="relative mx-auto flex max-w-6xl flex-col gap-5 px-5 py-6">
         <header className="flex items-center justify-between">
-          <Link href="/" className="font-display text-lg font-bold tracking-tight">
+          <Link href="/" className="font-arcade text-lg leading-none tracking-tight">
             ANYTHING<span className="text-orange-500">FIGHTER</span>
           </Link>
           <Link href="/gallery" className="text-xs text-orange-200/60 hover:text-orange-50">
