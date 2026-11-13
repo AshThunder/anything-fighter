@@ -77,31 +77,31 @@ export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a:
   }, [job, onReady]);
 
   return (
-    <div className="rounded-2xl border border-sky-300/20 bg-sky-400/[0.04] p-3">
+    <div className="rounded-2xl border border-line bg-panel p-3">
       <div className="flex items-center justify-between">
         <div>
           <div className="font-display text-sm font-bold">🏠 Fight in your room</div>
-          <div className="text-[11px] text-orange-200/55">
+          <div className="text-[11px] text-muted">
             Film a slow 10–20 s loop around your room → Aholo Reality turns it into a 3DGS arena.
           </div>
         </div>
-        <span className={`rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${live ? "bg-lime-400/15 text-lime-300" : "bg-yellow-400/15 text-yellow-300"}`}>
+        <span className={`rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${live ? "bg-ok/15 text-ok" : "bg-gold/15 text-gold"}`}>
           {live ? "Reality API · Flash" : "mock: no key"}
         </span>
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <button onClick={() => ref.current?.click()} className="rounded-lg border border-orange-300/25 px-2.5 py-1.5 text-xs hover:bg-white/5">
+        <button onClick={() => ref.current?.click()} className="btn btn-ghost btn-sm">
           {files.length ? (video ? `🎥 ${files[0].name.slice(0, 18)}` : `🖼 ${files.length} photos`) : "🎥 Pick video / 20+ photos"}
         </button>
         <button
           disabled={!ok || busy}
           onClick={start}
-          className="rounded-lg bg-sky-400 px-3 py-1.5 font-display text-xs font-bold text-black disabled:opacity-40"
+          className="btn btn-volt btn-sm disabled:opacity-40"
         >
           {busy ? "Scanning…" : "Build arena"}
         </button>
         {job && (
-          <span className="text-[11px] text-orange-200/60">
+          <span className="text-[11px] text-muted">
             {job.status === "SUCCEEDED"
               ? "✓ Arena ready"
               : job.status === "FAILED"
@@ -115,9 +115,9 @@ export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a:
           </span>
         )}
       </div>
-      {!ok && files.length > 0 && <p className="mt-1 text-[11px] text-yellow-300/80">Need one video or at least 20 photos.</p>}
+      {!ok && files.length > 0 && <p className="mt-1 text-[11px] text-gold">Need one video or at least 20 photos.</p>}
       {(err || job?.error) && (
-        <p className="mt-1 text-[11px] text-red-400" title={job?.error}>
+        <p className="mt-1 text-[11px] text-danger" title={job?.error}>
           {err ?? "Aholo couldn't rebuild this scan. Try a slower, steadier 10–20 s loop with good light."}
         </p>
       )}

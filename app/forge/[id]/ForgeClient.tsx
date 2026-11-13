@@ -6,6 +6,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { PoweredBy } from "@/components/ui/PoweredBy";
+import { SiteHeader } from "@/components/ui/SiteHeader";
 import type { AholoServiceKey } from "@/lib/fighters";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -209,23 +210,25 @@ export default function ForgeClient() {
   const slow = !!job && !fighter && !job.error && job.mode === "live" && curEta > 0 && stageAge > Math.max(180, curEta * 4);
   const asset = (f?: string) => (f && id ? `/api/assets/${id}/${f}` : undefined);
 
-  return (
-    <main className="relative min-h-dvh bg-[#0d0b09] text-orange-50">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(242,127,13,0.16),transparent_60%)]" />
-      <div className="relative mx-auto flex max-w-6xl flex-col gap-5 px-5 py-6">
-        <header className="flex items-center justify-between">
-          <Link href="/" className="font-arcade text-lg leading-none tracking-tight">
-            ANYTHING<span className="text-orange-500">FIGHTER</span>
-          </Link>
-          <Link href="/gallery" className="text-xs text-orange-200/60 hover:text-orange-50">
-            Gallery →
-          </Link>
-        </header>
+  const cur = idx >= 0 && idx < stages.length ? stages[idx] : undefined;
+  const status = lost
+    ? "Forge not found"
+    : fighter && gone
+      ? `${fighter.name} is no longer available`
+      : fighter
+        ? `${fighter.name} is ready!`
+        : job?.error
+          ? "Forge hit a snag"
+          : `Forging ${job?.name ?? "your fighter"}…`;
 
-        <section className="grid gap-5 md:grid-cols-[260px_1fr]">
-          <div className="flex gap-3 md:flex-col">
+  return (
+    <main className="relative min-h-dvh bg-ink text-fg">
+      <SiteHeader />
+      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
+        <section className={`grid gap-5 ${lost ? "" : "md:grid-cols-[260px_1fr]"}`}>
+          <div className={`flex gap-3 md:flex-col ${lost ? "hidden" : ""}`}>
             {[undefined, asset(job?.files.mascot)].map((src, i) => (
-              <div key={i} className="relative aspect-square w-1/2 overflow-hidden rounded-2xl border border-orange-300/15 bg-black/40 md:w-full">
+              <div key={i} className="relative aspect-square w-1/2 overflow-hidden rounded-xl border border-line bg-panel md:w-full">
                 {src ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -235,32 +238,59 @@ export default function ForgeClient() {
                     onError={(e) => (e.currentTarget.style.visibility = "hidden")}
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-orange-200/40">{i ? "concept art incoming…" : "🔒 kept private"}</div>
+                  <div className={`flex h-full items-center justify-center px-3 text-center text-sm text-muted ${i && !lost && !job?.error ? "skeleton" : ""}`}>
+                    {i ? (lost ? "—" : "Concept art incoming…") : "🔒 Kept private"}
+                  </div>
                 )}
-                <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-orange-100/70">
+                <span className="absolute left-2 top-2 rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-fg">
                   {i ? "Lux3D concept" : "Your photo"}
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-orange-300/15 bg-[#1a1511]/80 p-5" data-forge>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h1 className="min-w-0 font-display text-3xl font-black italic [overflow-wrap:anywhere]">
-                {lost ? "Forge not found" : fighter && gone ? `${fighter.name} is no longer available` : fighter ? `${fighter.name} is ready!` : job?.error ? "Forge hit a snag" : `Forging ${job?.name ?? "your fighter"}…`}
-              </h1>
-              <span className={`text-xs text-orange-200/60 ${lost ? "hidden" : ""}`}>
-                {job?.mode === "mock" ? (job.mockReason === "limit" ? "demo forge (no credits)" : "mock pipeline (no API key)") : "live Aholo Lux3D"} · {elapsed}s
-                {!fighter && !job?.error && remaining > 0 ? ` · ~${Math.ceil(remaining / 60)} min left` : ""}
+          <div className="card flex min-w-0 flex-col gap-4 p-4 sm:p-5" data-forge>
+            <div className="flex flex-col gap-1">
+              <span className={`eyebrow ${lost ? "hidden" : ""}`}>
+                {job?.mode === "mock" ? (job.mockReason === "limit" ? "Demo forge · no credits" : "Mock pipeline · no API key") : "Live · Aholo Lux3D"}
+                {!fighter && !job?.error && elapsed > 0 ? ` · ${elapsed >= 60 ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s` : `${elapsed}s`} elapsed` : ""}
               </span>
+              <h1 className="min-w-0 font-arcade text-2xl leading-tight [overflow-wrap:anywhere] sm:text-3xl" aria-live="polite">
+                {status}
+              </h1>
             </div>
-            <div className={`h-2 overflow-hidden rounded-full bg-black/50 ${lost ? "hidden" : ""}`}>
-              <div
-                className={`h-full rounded-full transition-[width] duration-700 ${job?.error ? "bg-red-500" : "bg-gradient-to-r from-orange-500 to-yellow-400"}`}
-                style={{ width: `${fighter ? 100 : Math.max(4, (Math.max(0, idx) / stages.length) * 100)}%` }}
-              />
-            </div>
-            <ol className={`grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 ${lost ? "hidden" : ""}`}>
+
+            {/* progress: one solid segment per stage + "Step n of N" */}
+            {!lost && (
+              <div className="flex flex-col gap-2" data-forge-progress>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
+                  <span className="font-display font-bold">
+                    {fighter ? (
+                      <span className="text-ok">All {stages.length} steps done</span>
+                    ) : job?.error ? (
+                      <span className="text-danger">Stopped at step {idx + 1}: {cur?.label}</span>
+                    ) : cur ? (
+                      <>
+                        Step {idx + 1} of {stages.length}: <span className="text-blaze">{cur.label}</span>
+                      </>
+                    ) : (
+                      "Starting…"
+                    )}
+                  </span>
+                  {!fighter && !job?.error && remaining > 0 && <span className="text-muted">about {Math.ceil(remaining / 60)} min left</span>}
+                </div>
+                <div className="flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={stages.length} aria-valuenow={fighter ? stages.length : Math.max(0, idx)}>
+                  {stages.map((s, i) => {
+                    const done = i < idx || !!fighter;
+                    const active = i === idx && !job?.error && !fighter;
+                    const failed = i === idx && !!job?.error;
+                    return <span key={s.key} className={`h-2.5 flex-1 rounded-sm ${failed ? "bg-danger" : done ? "bg-ok" : active ? "animate-pulse bg-blaze" : "bg-line"}`} />;
+                  })}
+                </div>
+              </div>
+            )}
+
+            <ol className={`grid grid-cols-2 gap-2 sm:grid-cols-3 ${lost ? "hidden" : ""}`}>
               {stages.map((s, i) => {
                 const done = i < idx || !!fighter;
                 const active = i === idx && !job?.error && !fighter;
@@ -268,15 +298,23 @@ export default function ForgeClient() {
                 return (
                   <li
                     key={s.key}
-                    className={`rounded-xl border px-2.5 py-2 text-[11px] ${
-                      failed ? "border-red-500/50 bg-red-500/10" : done ? "border-lime-400/30 bg-lime-400/5" : active ? "border-orange-400/60 bg-orange-500/10" : "border-orange-300/10 opacity-50"
+                    aria-current={active ? "step" : undefined}
+                    className={`rounded-lg border-2 px-2.5 py-2 text-xs ${
+                      failed ? "border-danger bg-danger/10" : done ? "border-ok/50 bg-panel" : active ? "border-blaze bg-blaze/10" : "border-line bg-panel text-dim"
                     }`}
                   >
-                    <div className="font-display font-bold">
-                      {failed ? "✗ " : done ? "✓ " : active ? <span className="inline-block animate-pulse">● </span> : ""}
-                      {s.label}
+                    <div className="flex items-center gap-1.5 font-display text-[13px] font-bold">
+                      <span
+                        aria-hidden
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
+                          failed ? "bg-danger text-ink" : done ? "bg-ok text-ink" : active ? "animate-pulse bg-blaze text-ink" : "bg-line text-muted"
+                        }`}
+                      >
+                        {failed ? "✗" : done ? "✓" : i + 1}
+                      </span>
+                      <span className={done || active || failed ? "text-fg" : ""}>{s.label}</span>
                     </div>
-                    <div className="text-orange-200/50">{s.tool}</div>
+                    <div className={`mt-0.5 ${done || active || failed ? "text-muted" : ""}`}>{s.tool}</div>
                   </li>
                 );
               })}
@@ -291,105 +329,107 @@ export default function ForgeClient() {
                 />
               ))}
             {job?.mockReason === "limit" && (
-              <p className="rounded-xl border border-yellow-400/25 bg-yellow-400/5 p-3 text-xs text-yellow-100/80" data-demo-forge>
+              <p className="rounded-lg border border-gold/50 bg-gold/10 p-3 text-sm text-fg" data-demo-forge>
                 Today&apos;s live Lux3D forge budget is used up, so this is a <b>demo forge</b>: the stages are simulated (no Aholo
                 credits) and your fighter uses a stand-in robot body. Every fighter in the{" "}
-                <Link href="/#select" className="underline">
+                <Link href="/#select" className="font-semibold text-gold underline">
                   roster
                 </Link>{" "}
                 and{" "}
-                <Link href="/gallery" className="underline">
+                <Link href="/gallery" className="font-semibold text-gold underline">
                   gallery
                 </Link>{" "}
                 was forged live by Lux3D. Live forging resets at midnight (Lagos time).
               </p>
             )}
             {job?.error && (
-              <div className="flex flex-col gap-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm" data-forge-error>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="flex-1 text-red-300">{friendlyForgeError(job.error, job.stage)}</span>
+              <div className="flex flex-col gap-3 rounded-lg border-2 border-danger/60 bg-danger/10 p-3 text-sm" data-forge-error role="alert">
+                <span className="text-fg">{friendlyForgeError(job.error, job.stage)}</span>
+                <div className="flex flex-wrap gap-2">
                   {(job.retries ?? 0) < 3 && (
-                    <button onClick={retry} className="rounded-lg bg-orange-500 px-4 py-1.5 font-display font-bold text-black" data-action="retry">
+                    <button onClick={retry} className="btn btn-primary" data-action="retry">
                       Retry stage {job.retries ? `(${job.retries}/3)` : ""}
                     </button>
                   )}
-                  <Link href="/#select" className="rounded-lg border border-orange-300/30 px-4 py-1.5 font-display">
+                  <Link href="/#select" className="btn btn-ghost">
                     Fight with the roster
                   </Link>
-                  <Link href="/" className="rounded-lg border border-orange-300/30 px-4 py-1.5 font-display">
+                  <Link href="/" className="btn btn-ghost">
                     Try another photo
                   </Link>
                 </div>
-                <details className="text-[11px] text-orange-200/40">
-                  <summary className="cursor-pointer select-none">Technical details</summary>
+                <details className="text-xs text-dim">
+                  <summary className="min-h-6 cursor-pointer select-none">Technical details</summary>
                   <code className="mt-1 block break-all">{job.error.slice(0, 300)}</code>
                 </details>
               </div>
             )}
-            {err && !job?.error && <p className="text-xs text-yellow-300/80">{err}</p>}
-            {lost && (
-              <p className="text-sm text-orange-100/70">
-                This forge job has expired or never existed (unfinished jobs are kept for 6 hours).{" "}
-                <Link href="/" className="underline">
-                  Forge a new fighter
-                </Link>{" "}
-                or pick one from the{" "}
-                <Link href="/gallery" className="underline">
-                  gallery
-                </Link>
-                .
+            {err && !job?.error && (
+              <p className="rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-fg" role="status">
+                {err}
               </p>
             )}
+            {lost && (
+              <div className="flex flex-col gap-3" data-notice="forge-lost">
+                <p className="text-base text-muted">This forge job has expired or never existed (unfinished jobs are kept for 6 hours).</p>
+                <div className="flex flex-wrap gap-2">
+                  <Link href="/#forge" className="btn btn-primary">
+                    Forge a new fighter
+                  </Link>
+                  <Link href="/gallery" className="btn btn-ghost">
+                    Browse the gallery
+                  </Link>
+                </div>
+              </div>
+            )}
             {slow && !err && (
-              <p className="text-xs text-orange-200/60">
+              <p className="text-sm text-muted">
                 Aholo is busier than usual on this step ({Math.round(stageAge / 60)} min so far). It&apos;ll keep going; you can practice
                 below or leave this page open and come back.
               </p>
             )}
             {fighter && gone && (
-              <p className="rounded-xl border border-orange-300/20 bg-black/30 p-3 text-sm text-orange-100/80" data-notice="model-missing">
+              <p className="rounded-lg border border-line-strong bg-panel-2 p-3 text-sm text-fg" data-notice="model-missing">
                 {fighter.name}&apos;s 3D files are no longer stored, so it can&apos;t fight any more. Forge it again from a new photo, or pick
                 a fighter from the roster.
               </p>
             )}
             {fighter && !gone && job?.rigless && (
-              <p className="text-xs text-orange-200/70">
+              <p className="text-sm text-muted">
                 Lux3D&apos;s auto-rig couldn&apos;t find a humanoid skeleton in this shape, so {fighter.name} fights freestyle: the full
                 Lux3D mesh, animated with procedural lunges, spins and hops. Try a photo with a clearer body shape for full rigged moves.
               </p>
             )}
             {fighter && gone ? (
-              <div className="flex flex-wrap gap-3">
-                <Link href="/" className="rounded-xl bg-orange-500 px-6 py-3 font-display text-lg font-black italic text-black hover:bg-orange-400" data-action="forge-again">
-                  FORGE A NEW FIGHTER
+              <div className="flex flex-wrap gap-2">
+                <Link href="/#forge" className="btn btn-primary btn-lg" data-action="forge-again">
+                  Forge a new fighter
                 </Link>
-                <Link href="/fight" className="rounded-xl border border-orange-300/30 px-5 py-3 font-display">
+                <Link href="/fight" className="btn btn-ghost h-14">
                   Fight with the roster
                 </Link>
               </div>
             ) : fighter ? (
-              <div className="flex flex-wrap gap-3">
-                <Link href={`/fight?p1=${fighter.id}`} className="rounded-xl bg-orange-500 px-6 py-3 font-display text-lg font-black italic text-black [overflow-wrap:anywhere] hover:bg-orange-400" data-action="fight-new">
-                  FIGHT WITH {fighter.name.toUpperCase()}!
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/fight?p1=${fighter.id}`} className="btn btn-primary btn-lg [overflow-wrap:anywhere]" data-action="fight-new">
+                  Fight with {fighter.name}!
                 </Link>
-                <Link
-                  href={`/fight?p2=${fighter.id}&cpu=normal`}
-                  className="rounded-xl border-2 border-sky-400/70 bg-sky-500/15 px-5 py-3 font-display font-black italic text-sky-100 [overflow-wrap:anywhere] hover:bg-sky-500/25"
-                  data-action="fight-against"
-                >
-                  FIGHT AGAINST {fighter.name.toUpperCase()}
+                <Link href={`/fight?p2=${fighter.id}&cpu=normal`} className="btn btn-volt btn-lg text-base [overflow-wrap:anywhere]" data-action="fight-against">
+                  Fight against {fighter.name}
                 </Link>
-                <Link href="/gallery" className="rounded-xl border border-orange-300/30 px-5 py-3 font-display">
+                <Link href="/gallery" className="btn btn-ghost h-14">
                   See it in the gallery
                 </Link>
               </div>
             ) : (
               !job?.error &&
               !lost && (
-                <div className="flex flex-wrap items-center gap-3 text-sm text-orange-100/70">
-                  <span className="flex-1">💡 {TIPS[tip % TIPS.length]}</span>
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel-2 p-3 text-sm text-muted">
+                  <span className="min-w-[12rem] flex-1">
+                    <b className="text-gold">Tip</b> · {TIPS[tip % TIPS.length]}
+                  </span>
                   {!practice && (
-                    <button onClick={startPractice} className="rounded-xl border border-orange-400/60 bg-orange-500/10 px-4 py-2 font-display font-bold" data-action="practice">
+                    <button onClick={startPractice} className="btn btn-ghost border-blaze" data-action="practice">
                       🥊 Practice while you wait
                     </button>
                   )}
@@ -400,12 +440,12 @@ export default function ForgeClient() {
         </section>
 
         {practice && (
-          <section className="relative h-[62vh] min-h-[380px] overflow-hidden rounded-2xl border border-orange-300/15" data-practice>
+          <section className="relative h-[62vh] min-h-[380px] overflow-hidden rounded-xl border border-line" data-practice>
             {ready && <GameScene />}
             {ready && <Hud />}
             {fighter && !gone && (
               <div className="absolute inset-x-0 top-14 flex justify-center">
-                <Link href={`/fight?p1=${fighter.id}`} className="animate-[pop_0.4s_ease-out] rounded-xl bg-lime-400 px-5 py-2 font-display font-black text-black shadow-2xl">
+                <Link href={`/fight?p1=${fighter.id}`} className="btn animate-[pop_0.4s_ease-out] border-ok bg-ok text-ink shadow-[0_4px_0_#000]">
                   ✓ {fighter.name} is ready — fight for real →
                 </Link>
               </div>

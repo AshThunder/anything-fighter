@@ -7,8 +7,8 @@ import { PoweredBy } from "@/components/ui/PoweredBy";
 
 const VersusPreview = dynamic(() => import("./VersusPreview"), { ssr: false });
 
-const P1C = "#f97316";
-const P2C = "#38bdf8";
+const P1C = "#ff5a1f";
+const P2C = "#22c7ff";
 
 function Portrait({ f, i }: { f: FighterDef; i: number }) {
   return f.thumbUrl ? (
@@ -39,8 +39,8 @@ function NamePlate({ f, side, tag }: { f?: FighterDef; side: 0 | 1; tag: string 
       >
         <span>{tag}</span>
       </div>
-      <div className="mt-1 truncate font-arcade text-lg leading-tight text-white text-stroke sm:text-2xl">{f?.name ?? "—"}</div>
-      <div className="truncate text-[11px] text-orange-100/70">{f?.tagline}</div>
+      <div className="mt-1 truncate font-arcade text-lg leading-tight text-fg text-stroke sm:text-2xl">{f?.name ?? "—"}</div>
+      <div className="truncate text-xs text-muted">{f?.tagline}</div>
     </div>
   );
 }
@@ -87,8 +87,10 @@ export function SelectScreen({
   return (
     <section className="flex flex-col gap-3" data-select>
       <div className="flex items-end justify-between gap-2">
-        <h2 className="arcade-title text-2xl text-orange-50 sm:text-3xl">Select fighter</h2>
-        <div className="flex overflow-hidden rounded-xl border border-white/10 text-xs font-bold" role="tablist" aria-label="Which side you're picking">
+        <h2 className="arcade-title text-2xl text-fg sm:text-3xl">
+          <span className="text-blaze">2.</span> Select fighter
+        </h2>
+        <div className="flex overflow-hidden rounded-lg border-2 border-line-strong" role="tablist" aria-label="Which side you're picking">
           {([0, 1] as const).map((s) => (
             <button
               key={s}
@@ -96,7 +98,7 @@ export function SelectScreen({
               aria-selected={side === s}
               data-side={s}
               onClick={() => setSide(s)}
-              className={`px-3 py-2 font-arcade tracking-wide transition ${side === s ? "text-black" : "text-orange-100/70"}`}
+              className={`flex min-h-11 min-w-14 items-center justify-center px-3 font-arcade text-sm transition ${side === s ? "text-ink" : "bg-panel text-muted hover:text-fg"}`}
               style={side === s ? { background: s === 0 ? P1C : P2C } : undefined}
             >
               {s === 0 ? "1P" : p2tag}
@@ -106,12 +108,13 @@ export function SelectScreen({
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[1.05fr_1fr] lg:items-start">
-        {/* versus stage: both picks idling in 3D */}
-        <div className="relative h-[44vh] min-h-[260px] max-h-[440px] overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_85%,rgba(242,127,13,0.28),transparent_65%),linear-gradient(180deg,#1b1410,#0d0b09)] lg:sticky lg:top-20">
-          <div className="absolute inset-y-0 left-0 w-1/2 bg-[linear-gradient(110deg,rgba(249,115,22,0.18),transparent_70%)]" />
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(250deg,rgba(56,189,248,0.16),transparent_70%)]" />
+        {/* versus stage: both picks idling in 3D; flat split backdrop in the two side colours */}
+        <div className="relative h-[44vh] min-h-[260px] max-h-[440px] overflow-hidden rounded-xl border border-line bg-panel lg:sticky lg:top-20">
+          <div className="absolute inset-y-0 left-0 w-1/2 bg-blaze/10" />
+          <div className="absolute inset-y-0 right-0 w-1/2 bg-volt/10" />
+          <div className="absolute inset-x-0 bottom-0 h-[22%] border-t border-line bg-ink/60" />
           <VersusPreview a={a} b={b} />
-          <div className="pointer-events-none absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 -rotate-6 font-arcade text-5xl text-orange-400 text-stroke drop-shadow-[0_0_24px_rgba(242,127,13,0.7)] sm:text-6xl">
+          <div className="pointer-events-none absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 -rotate-6 font-arcade text-5xl text-gold text-stroke [text-shadow:0_4px_0_#000] sm:text-6xl">
             VS
           </div>
           <NamePlate f={a} side={0} tag="1P" />
@@ -121,18 +124,18 @@ export function SelectScreen({
 
         {/* portrait grid with cursors */}
         <div>
-          <p className="mb-2 text-xs text-orange-200/70" aria-live="polite">
-            Tap a fighter for{" "}
-            <b style={{ color: side === 0 ? P1C : P2C }} className="font-arcade">
+          <p className="mb-2 flex min-h-6 items-center gap-1.5 text-sm text-muted" aria-live="polite">
+            Tap a fighter for
+            <span className="tag" style={{ background: side === 0 ? P1C : P2C }}>
               {side === 0 ? "1P" : p2tag}
-            </b>
-            <span className="hidden [@media(hover:hover)]:inline"> · arrows + Enter · shift-click / right-click = {p2tag}</span>
+            </span>
+            <span className="hidden text-xs text-dim [@media(hover:hover)]:inline">· arrows + Enter · shift-click / right-click = {p2tag}</span>
           </p>
           <div ref={grid} onKeyDown={onKey} className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4" role="listbox" aria-label="Fighters">
             {fighters.map((f, i) => {
               const is1 = f.id === p1;
               const is2 = f.id === p2;
-              const border = is1 && is2 ? `linear-gradient(135deg, ${P1C} 50%, ${P2C} 50%)` : is1 ? P1C : is2 ? P2C : undefined;
+              const color = is1 ? P1C : is2 ? P2C : undefined;
               return (
                 <button
                   key={f.id}
@@ -148,25 +151,27 @@ export function SelectScreen({
                     e.preventDefault();
                     pick(1, f.id);
                   }}
-                  className="group relative aspect-[3/4] rounded-xl p-[3px] outline-none transition active:scale-95 focus-visible:ring-4 focus-visible:ring-white/70"
-                  style={{ background: border ?? "rgba(255,255,255,0.08)" }}
+                  className={`group relative flex aspect-[3/4] flex-col overflow-hidden rounded-lg border-[3px] bg-panel-2 text-left transition active:scale-95 ${
+                    color ? "" : "border-line hover:border-line-strong"
+                  }`}
+                  style={color ? { borderColor: color, boxShadow: `0 4px 0 ${color}55` } : undefined}
                 >
-                  <div className="relative h-full w-full overflow-hidden rounded-[9px]" style={{ background: `radial-gradient(circle at 50% 75%, ${f.color}55, #120e0b 75%)` }}>
+                  <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: `${f.color}26` }}>
                     <Portrait f={f} i={i} />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-1.5 pb-1 pt-5">
-                      <div className="truncate font-arcade text-[11px] leading-tight text-white sm:text-xs">{f.name}</div>
-                      {f.tagline.includes("freestyle") && <div className="text-[9px] uppercase tracking-wider text-yellow-300/80">freestyle</div>}
-                    </div>
                     {is1 && (
-                      <span className="absolute left-1 top-1 rounded px-1 font-arcade text-[10px] text-black animate-[cursorpulse_1s_ease-in-out_infinite]" style={{ background: P1C }}>
+                      <span className="tag absolute left-1 top-1 animate-[cursorpulse_1s_ease-in-out_infinite]" style={{ background: P1C }}>
                         1P
                       </span>
                     )}
                     {is2 && (
-                      <span className="absolute right-1 top-1 rounded px-1 font-arcade text-[10px] text-black animate-[cursorpulse_1s_ease-in-out_infinite]" style={{ background: P2C }}>
+                      <span className="tag absolute right-1 top-1 animate-[cursorpulse_1s_ease-in-out_infinite]" style={{ background: P2C }}>
                         {p2tag}
                       </span>
                     )}
+                  </div>
+                  <div className="shrink-0 border-t border-line bg-ink px-1.5 py-1.5" style={color ? { background: color } : undefined}>
+                    <div className={`font-arcade text-[11px] leading-tight [overflow-wrap:anywhere] line-clamp-2 sm:text-xs ${color ? "text-ink" : "text-fg"}`}>{f.name}</div>
+                    {f.tagline.includes("freestyle") && <div className={`text-[10px] font-semibold uppercase tracking-wider ${color ? "text-ink/80" : "text-gold"}`}>freestyle</div>}
                   </div>
                 </button>
               );

@@ -6,10 +6,76 @@
   --font-arcade: var(--font-bungee), var(--font-sg), sans-serif;
 }
 
+/*
+ * Flat design system (13 Nov 2026, owner rule: solid colours only, no blended colour ramps anywhere).
+ * Solid fills + outlines only; hard offset shadows / soft glows are fine.
+ *   ink      page background          panel / panel-2  raised surfaces
+ *   line     hairlines                line-strong      control outlines
+ *   fg       primary text (16:1)      muted            secondary text (>= 7:1 on panel)  dim (>= 4.5:1 on ink)
+ *   blaze    P1 + primary action      volt             P2 / CPU + secondary action
+ *   gold     health, super, focus     danger / ok      low HP + errors / done states
+ */
+@theme {
+  --color-ink: #0b0b0e;
+  --color-panel: #15151b;
+  --color-panel-2: #1e1e27;
+  --color-line: #2b2b37;
+  --color-line-strong: #454556;
+  --color-fg: #f5f5f7;
+  --color-muted: #b4b4c3;
+  --color-dim: #8b8b9e;
+  --color-blaze: #ff5a1f;
+  --color-blaze-hi: #ff7a47;
+  --color-blaze-deep: #a8350b;
+  --color-volt: #22c7ff;
+  --color-volt-deep: #0b6f92;
+  --color-gold: #ffd23f;
+  --color-danger: #ff3b47;
+  --color-ok: #3ddc84;
+}
+
 html,
 body {
-  background: #0d0b09;
+  background: var(--color-ink);
 }
+
+/* one visible focus style everywhere (keyboard only) */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* buttons: >= 44 px tall, solid fill or outline, hard bottom edge for depth */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: 2.75rem; padding: 0 1rem; border-radius: 0.625rem; border: 2px solid transparent;
+    font-family: var(--font-display); font-weight: 700; font-size: 0.9375rem; line-height: 1.1; text-align: center;
+    transition: transform 80ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 80ms ease;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .btn:active:not(:disabled) { transform: translateY(2px); }
+  .btn:disabled { cursor: not-allowed; }
+  .btn-primary { background: var(--color-blaze); border-color: var(--color-blaze); color: var(--color-ink); box-shadow: 0 4px 0 var(--color-blaze-deep); }
+  .btn-primary:hover:not(:disabled) { background: var(--color-blaze-hi); border-color: var(--color-blaze-hi); }
+  .btn-primary:active:not(:disabled) { box-shadow: 0 2px 0 var(--color-blaze-deep); }
+  .btn-primary:disabled { background: var(--color-panel-2); border-color: var(--color-line-strong); color: var(--color-dim); box-shadow: none; }
+  .btn-volt { background: var(--color-volt); border-color: var(--color-volt); color: var(--color-ink); box-shadow: 0 4px 0 var(--color-volt-deep); }
+  .btn-volt:hover:not(:disabled) { background: #5ad6ff; border-color: #5ad6ff; }
+  .btn-volt:active:not(:disabled) { box-shadow: 0 2px 0 var(--color-volt-deep); }
+  .btn-ghost { background: var(--color-panel-2); border-color: var(--color-line-strong); color: var(--color-fg); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--color-muted); }
+  .btn-outline-volt { background: transparent; border-color: var(--color-volt); color: var(--color-volt); }
+  .btn-outline-volt:hover:not(:disabled) { background: rgb(34 199 255 / 0.12); }
+  .btn-sm { min-height: 2.75rem; padding: 0 0.75rem; font-size: 0.8125rem; }
+  .btn-lg { min-height: 3.5rem; padding: 0 1.5rem; font-family: var(--font-arcade); font-weight: 400; font-size: 1.25rem; letter-spacing: 0.02em; }
+
+  .card { background: var(--color-panel); border: 1px solid var(--color-line); border-radius: 0.875rem; }
+  .eyebrow { font-family: var(--font-display); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-dim); }
+  .tag { display: inline-flex; align-items: center; border-radius: 0.375rem; padding: 0.125rem 0.375rem; font-family: var(--font-arcade); font-size: 0.6875rem; line-height: 1.2; color: var(--color-ink); }
+  .skeleton { background: var(--color-panel-2); animation: skeleton 1.2s ease-in-out infinite; }
+}
+@keyframes skeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 @keyframes pop {
   0% { transform: scale(0.6); opacity: 0; }
@@ -36,7 +102,7 @@ body {
 
 /* ── arcade UI ── */
 .text-stroke { -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85); paint-order: stroke fill; }
-.arcade-title { font-family: var(--font-arcade); letter-spacing: 0.01em; text-shadow: 0 3px 0 #7c2d12, 0 0 28px rgba(242, 127, 13, 0.45); }
+.arcade-title { font-family: var(--font-arcade); letter-spacing: 0.01em; text-shadow: 0 3px 0 #000; }
 .skew-panel { transform: skewX(-10deg); }
 .skew-panel > * { transform: skewX(10deg); }
 @keyframes idlebob {
@@ -75,7 +141,6 @@ body {
   60% { transform: scale(0.92) rotate(-4deg); opacity: 1; letter-spacing: 0.02em; }
   100% { transform: scale(1) rotate(-4deg); opacity: 1; letter-spacing: 0.02em; }
 }
-@keyframes stripes { to { background-position: 40px 0; } }
 @keyframes lowhp { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.6); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }

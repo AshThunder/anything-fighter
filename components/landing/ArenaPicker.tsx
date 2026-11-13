@@ -52,34 +52,36 @@ export function ArenaPicker({
                 sfx("click");
                 onChange(a.id, a.splatUrl ? view : "pano");
               }}
-              className={`group relative aspect-[16/10] w-[78vw] max-w-sm shrink-0 snap-center overflow-hidden rounded-2xl border-2 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-sky-400 sm:w-auto sm:max-w-none ${
-                sel ? "border-orange-400 shadow-[0_0_0_3px_rgba(242,127,13,0.35),0_10px_40px_rgba(242,127,13,0.25)]" : "border-white/10 opacity-80 hover:opacity-100"
+              className={`group relative flex aspect-[16/11] w-[78vw] max-w-sm shrink-0 snap-center flex-col overflow-hidden rounded-xl border-[3px] bg-panel-2 text-left transition sm:w-auto sm:max-w-none ${
+                sel ? "border-blaze shadow-[0_4px_0_#a8350b]" : "border-line hover:border-line-strong"
               }`}
             >
-              {src ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={src} alt={`${a.name} preview`} className={`absolute inset-0 h-full w-full object-cover transition duration-500 ${sel ? "scale-105" : "group-hover:scale-105"}`} />
-              ) : (
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(242,127,13,0.55),#1a1511_70%)]" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-              <span className="absolute left-2 top-2 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-100/90">{BADGE[a.source]}</span>
-              {sel && <span className="absolute right-2 top-2 rounded-md bg-orange-500 px-1.5 py-0.5 font-arcade text-[10px] text-black">Selected</span>}
-              <span className="absolute inset-x-3 bottom-2 truncate font-arcade text-xl text-white drop-shadow-[0_2px_0_rgba(0,0,0,0.8)]">{a.name}</span>
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                {src ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={src} alt={`${a.name} preview`} className={`absolute inset-0 h-full w-full object-cover transition duration-500 ${sel ? "scale-105" : "group-hover:scale-105"}`} />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-panel font-arcade text-4xl text-line-strong">{a.name.slice(0, 1)}</div>
+                )}
+                <span className="absolute left-2 top-2 rounded-md bg-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-fg">{BADGE[a.source]}</span>
+                {sel && <span className="tag absolute right-2 top-2 bg-blaze">Selected</span>}
+              </div>
+              <span className={`shrink-0 truncate px-3 py-2 font-arcade text-lg ${sel ? "bg-blaze text-ink" : "bg-ink text-fg"}`}>{a.name}</span>
             </button>
           );
         })}
       </div>
 
       {cur?.splatUrl && cur.panoUrl && (
-        <div className="flex items-center gap-2 text-xs text-orange-200/70">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
           Render as
           {(["splat", "pano"] as const).map((v) => (
             <button
               key={v}
               data-view={v}
               onClick={() => onChange(cur.id, v)}
-              className={`rounded-lg border px-2.5 py-1 ${view === v ? "border-orange-400 bg-orange-500/15 text-orange-50" : "border-orange-300/15"}`}
+              aria-pressed={view === v}
+              className={`btn btn-sm ${view === v ? "border-fg bg-fg text-ink" : "btn-ghost"}`}
             >
               {v === "splat" ? "3DGS (Aholo Viewer)" : "Panorama"}
             </button>
@@ -93,11 +95,11 @@ export function ArenaPicker({
             onClick={() => setShowSoon((s) => !s)}
             aria-expanded={showSoon}
             data-action="coming-soon"
-            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left text-sm text-orange-100/80 hover:bg-white/[0.06]"
+            className="flex min-h-12 items-center justify-between rounded-lg border border-line bg-panel px-3 py-2.5 text-left text-sm text-muted hover:border-line-strong"
           >
             <span>
-              <b className="font-arcade text-xs tracking-wide text-orange-300">Coming soon</b>
-              <span className="ml-2 text-orange-200/60">
+              <b className="font-arcade text-xs tracking-wide text-gold">Coming soon</b>
+              <span className="ml-2">
                 {soon.length} AI world{soon.length === 1 ? "" : "s"} in Aholo&apos;s queue · build your own
               </span>
             </span>
@@ -107,16 +109,16 @@ export function ArenaPicker({
             <div className="flex flex-col gap-2" data-coming-soon>
               <ul className="grid grid-cols-2 gap-2">
                 {soon.map((a) => (
-                  <li key={a.id} data-arena={a.id} title={a.prompt ?? a.note} className="rounded-xl border border-dashed border-white/15 bg-black/30 p-2.5">
-                    <div className="truncate font-display text-sm font-bold text-orange-50/80">{a.name}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-orange-200/50">{BADGE[a.source]}</div>
-                    <div className={`mt-1 text-[11px] ${a.stuck ? "text-red-300/80" : "text-orange-200/70"}`}>
+                  <li key={a.id} data-arena={a.id} title={a.prompt ?? a.note} className="rounded-lg border border-dashed border-line-strong bg-panel p-2.5">
+                    <div className="truncate font-display text-sm font-bold text-fg">{a.name}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-dim">{BADGE[a.source]}</div>
+                    <div className={`mt-1 text-[11px] ${a.stuck ? "text-danger" : "text-muted"}`}>
                       {a.stuck ? "Aholo queue stuck" : a.status === "RUNNING" ? `Generating ${Math.round((a.progress ?? 0) * 100)}%` : "Queued"}
                     </div>
                   </li>
                 ))}
               </ul>
-              <p className="text-[11px] text-orange-200/50">
+              <p className="text-xs text-dim">
                 Aholo runs one world job at a time per account; these appear as playable arenas the moment they finish.
               </p>
               {soonExtra}

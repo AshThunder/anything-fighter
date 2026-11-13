@@ -1,6 +1,6 @@
 "use client";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
+import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { Suspense, useEffect, useState } from "react";
 import { Arena } from "@/components/arena/Arena";
 import { AholoSplatLayer, isMobileGPU } from "@/components/arena/AholoSplatLayer";
@@ -127,7 +127,7 @@ export default function GameScene() {
   if (!fighters) return null;
   const splat = arena.kind === "splat" && arena.url;
   return (
-    <div className="absolute inset-0 bg-[#0d0b09]" data-game-root data-arena={arena.kind}>
+    <div className="absolute inset-0 bg-ink" data-game-root data-arena={arena.kind}>
       {splat && (
         <AholoSplatLayer
           urls={arena.urls?.length ? arena.urls : [arena.url!]}
@@ -186,8 +186,8 @@ export default function GameScene() {
         <GameLoop />
         {!splat && (
           <EffectComposer>
+            {/* flat look: no vignette (radial edge darkening) since the 13 Nov UI pass; bloom glow only */}
             <Bloom luminanceThreshold={1.4} intensity={0.8} mipmapBlur />
-            <Vignette darkness={0.55} offset={0.25} />
           </EffectComposer>
         )}
       </Canvas>
