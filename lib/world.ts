@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { call, isMockMode, uploadAsset, worldClient } from "./aholo-sdk";
+import { call, isMockMode, worldClient } from "./aholo-sdk";
 import { getRuntimeCache } from "./store";
 
 /**
@@ -35,6 +35,8 @@ export interface WorldJob {
   createdAt: number;
   updatedAt: number;
   upAxis?: "Z" | "Y" | "-Y";
+  /** Cover still uploaded to OUS (or Aholo's world.cover). */
+  coverUrl?: string;
 }
 
 export const IN_PROGRESS = new Set(["PENDING", "PREPROCESSING", "RUNNING", "QUEUED"]);
@@ -97,6 +99,8 @@ export async function listWorldJobIds(): Promise<string[]> {
 export interface WorldDetail {
   worldId?: string;
   name?: string;
+  /** Official Aholo world cover URL (Reality scans often have this instead of a panorama). */
+  cover?: string;
   status?: string;
   progress?: number;
   createTime?: number;
@@ -209,30 +213,38 @@ export async function createWorldGeneration(input: { name: string; prompt: strin
 }
 
 /**
- * Aholo Reality "Fight in your room": one phone video (.mp4/.mov) or ≥20 photos → 3DGS reconstruction.
- * Uses Flash quality (`low`, 20 credits) + scene "space" (indoor) by default.
+ * Aholo Reality "Fight in your room": one phone video or ≥20 photos already uploaded to OUS → 3DGS
+ * reconstruction via world.reconstructions.create. Flash quality (`low`, 20 credits) + scene "space".
+ * Uploads happen in the browser with a token from getUploadToken() so large videos never hit Vercel.
  */
-export async function createRoomScan(input: { name: string; files: { buf: Buffer; filename: string }[]; quality?: "low" | "normal" | "high" }): Promise<WorldJob> {
-  const video = input.files.length === 1 && /\.(mp4|mov)$/i.test(input.files[0].filename);
-  if (!video && input.files.length < 20) throw new Error("Need one room video (.mp4/.mov) or at least 20 photos.");
+export async function createRoomScan(input: {
+  name: string;
+  resources: { url: string; type: "video" | "image" }[];
+  cover?: string;
+  quality?: "low" | "normal" | "high";
+}): Promise<WorldJob> {
   const job: WorldJob = {
     id: newId("room"), kind: "reality", name: input.name, mode: isMockMode() ? "mock" : "live",
-    status: "UPLOADING", progress: 0, createdAt: Date.now(), updatedAt: Date.now(),
+    status: "PENDING", progress: 0, createdAt: Date.now(), updatedAt: Date.now(),
+    coverUrl: input.cover,
   };
   if (job.mode === "mock") {
-    job.status = "PENDING";
     await saveJob(job);
     return job;
   }
-  await assertQueueFree(); // before uploading anything
-  await saveJob(job);
+  const video = input.resources.length === 1 && input.resources[0]?.type === "video";
+  const images = input.resources.filter((r) => r.type === "image");
+  if (!video && images.length < 20) throw new Error("Need one room video or at least 20 photos.");
+  if (input.resources.some((r) => typeof r.url !== "string" || !/^https?:\/\//i.test(r.url))) {
+    throw new Error("Need Aholo asset URLs for the scan.");
+  }
+  await assertQueueFree();
   try {
-    const urls: string[] = [];
-    for (const f of input.files) urls.push(await uploadAsset(f.buf, f.filename));
     const r = await call(() =>
       worldClient().reconstructions.create({
         name: input.name,
-        resources: urls.map((url) => ({ url, type: video ? ("video" as const) : ("image" as const) })),
+        ...(input.cover ? { cover: input.cover } : {}),
+        resources: input.resources,
         taskQuality: input.quality ?? "low",
         scene: "space",
       }),

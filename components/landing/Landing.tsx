@@ -287,6 +287,7 @@ export default function Landing() {
           <h2 className="arcade-title text-2xl text-fg sm:text-3xl">
             <span className="text-blaze">3.</span> Select stage
           </h2>
+          <RoomScan live={mode === null ? null : mode === "live"} onReady={onRoomReady} />
           <ArenaPicker
             arenas={arenas}
             value={arena}
@@ -295,7 +296,6 @@ export default function Landing() {
               setArena(id);
               setView(v);
             }}
-            soonExtra={<RoomScan live={mode === null ? null : mode === "live"} onReady={onRoomReady} />}
           />
         </section>
 
