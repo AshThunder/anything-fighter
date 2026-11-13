@@ -66,3 +66,15 @@ public/fighters/gen-*/photo.*
 
 # local moderation queue / runtime data
 .data/
+
+# Hackathon working media must never land in git (videos, venv, clips, secrets)
+submission/**/*.mp4
+submission/**/*.wav
+submission/**/*.webm
+submission/**/.venv/
+submission/**/__pycache__/
+submission/**/node_modules/
+submission/**/clips/
+submission/**/frames/
+submission/**/voice-samples/
+submission/**/preview/

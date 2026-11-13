@@ -1,0 +1,126 @@
+[
+  {
+    "id": "01_hook",
+    "mood": "hype",
+    "caption_style": "FightSub",
+    "sub": "Your mug. Your duck. Your room. Anything Fighter turns one photo into a rigged 3D fighter — and throws it into a world built by Aholo.",
+    "parts": [
+      {"tts": "Your mug. Your duck. Your room!", "rate": "+16%", "pitch": "+8Hz", "volume": "+8%", "silence_after": 0.22},
+      {"tts": "Anything Fighter turns one photo...", "rate": "+10%", "pitch": "+5Hz", "volume": "+4%", "silence_after": 0.14},
+      {"tts": "into a rigged 3-D fighter...", "rate": "+14%", "pitch": "+7Hz", "volume": "+6%", "silence_after": 0.16},
+      {"tts": "and throws it into a world built by Aholo!", "rate": "+18%", "pitch": "+10Hz", "volume": "+10%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "02_home",
+    "mood": "confident",
+    "caption_style": "Sub",
+    "sub": "This is our Gaming-track entry for the Manycore Aholo Global 3D AI Hackathon. Every fighter, every arena, every backdrop you are about to see is made with Aholo's own tools.",
+    "parts": [
+      {"tts": "This is our Gaming-track entry for the Manycore Aholo Global 3-D A.I. Hackathon.", "rate": "+6%", "pitch": "+3Hz", "volume": "+2%", "silence_after": 0.22},
+      {"tts": "Every fighter, every arena, every backdrop you are about to see...", "rate": "+4%", "pitch": "+2Hz", "volume": "+0%", "silence_after": 0.12},
+      {"tts": "is made with Aholo's own tools.", "rate": "+8%", "pitch": "+4Hz", "volume": "+4%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "03_forge_form",
+    "mood": "tech",
+    "caption_style": "Sub",
+    "sub": "Snap or upload any object, give it a name, and hit Forge. Under the hood that's Asset upload, then Lux3D — concept image, image-to-3D, humanoid auto-rig, and ten retargeted moves — plus a RenderCloud KO poster. Sharing the original photo is off by default, and it needs a consent attestation.",
+    "parts": [
+      {"tts": "Snap or upload any object, give it a name, and hit Forge!", "rate": "+10%", "pitch": "+5Hz", "volume": "+4%", "silence_after": 0.20},
+      {"tts": "Under the hood, that's Asset upload, then Lux 3-D: concept image, image-to-3-D, humanoid auto-rig, and ten retargeted moves...", "rate": "+4%", "pitch": "+2Hz", "volume": "+0%", "silence_after": 0.16},
+      {"tts": "plus a RenderCloud K.O. poster.", "rate": "+8%", "pitch": "+4Hz", "volume": "+2%", "silence_after": 0.22},
+      {"tts": "Sharing the original photo is off by default... and it needs a consent attestation.", "rate": "+3%", "pitch": "+1Hz", "volume": "+0%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "04_live_forge",
+    "mood": "hype",
+    "caption_style": "Sub",
+    "sub": "Watch a live forge. We uploaded a fire hydrant and named it Hydra Punch. Lux3D designs the fighter, builds the mesh, rigs it, and retargets the moves. About five minutes, start to finish.",
+    "parts": [
+      {"tts": "Watch a live forge!", "rate": "+16%", "pitch": "+8Hz", "volume": "+8%", "silence_after": 0.20},
+      {"tts": "We uploaded a fire hydrant, and named it Hydra Punch.", "rate": "+10%", "pitch": "+6Hz", "volume": "+4%", "silence_after": 0.18},
+      {"tts": "Lux 3-D designs the fighter, builds the mesh, rigs it, and retargets the moves.", "rate": "+6%", "pitch": "+3Hz", "volume": "+2%", "silence_after": 0.16},
+      {"tts": "About five minutes, start to finish.", "rate": "+8%", "pitch": "+4Hz", "volume": "+2%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "05_roster",
+    "mood": "confident",
+    "caption_style": "Sub",
+    "sub": "The same pipeline already built the starter roster — Mug Shot, Sole Survivor, Quack Attack, Toast Master, Prickly Pete.",
+    "parts": [
+      {"tts": "The same pipeline already built the starter roster.", "rate": "+6%", "pitch": "+3Hz", "volume": "+2%", "silence_after": 0.18},
+      {"tts": "Mug Shot. Sole Survivor. Quack Attack. Toast Master. Prickly Pete.", "rate": "+10%", "pitch": "+5Hz", "volume": "+4%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "06_select_stages",
+    "mood": "tech",
+    "caption_style": "Sub",
+    "sub": "Pick your fighter and your opponent. The versus preview is the live Lux3D mesh. Then pick a stage: SpatialGen worlds like Toy Shop at Midnight and Rooftop Dojo — or fight inside a room scanned with Aholo Reality.",
+    "parts": [
+      {"tts": "Pick your fighter, and your opponent.", "rate": "+8%", "pitch": "+4Hz", "volume": "+2%", "silence_after": 0.16},
+      {"tts": "The versus preview is the live Lux 3-D mesh.", "rate": "+5%", "pitch": "+2Hz", "volume": "+0%", "silence_after": 0.18},
+      {"tts": "Then pick a stage: Spatial Gen worlds, like Toy Shop at Midnight and Rooftop Dojo...", "rate": "+5%", "pitch": "+3Hz", "volume": "+0%", "silence_after": 0.16},
+      {"tts": "or fight inside a room scanned with Aholo Reality.", "rate": "+10%", "pitch": "+6Hz", "volume": "+4%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "07_fight_viewer",
+    "mood": "hype",
+    "caption_style": "FightSub",
+    "sub": "The fight runs in the browser, over an Aholo Viewer 3D Gaussian splat. Combos, a special, a super — the clips are Lux3D retargets, not canned human mocap.",
+    "parts": [
+      {"tts": "The fight runs in the browser, over an Aholo Viewer 3-D Gaussian splat.", "rate": "+12%", "pitch": "+6Hz", "volume": "+4%", "silence_after": 0.16},
+      {"tts": "Combos! A special! A super!", "rate": "+18%", "pitch": "+10Hz", "volume": "+10%", "silence_after": 0.20},
+      {"tts": "The clips are Lux 3-D retargets... not canned human mocap.", "rate": "+12%", "pitch": "+6Hz", "volume": "+4%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "08_reality",
+    "mood": "hype",
+    "caption_style": "FightSub",
+    "sub": "And this arena is a real room scan. Same game, your space.",
+    "parts": [
+      {"tts": "And this arena... is a real room scan.", "rate": "+8%", "pitch": "+6Hz", "volume": "+4%", "silence_after": 0.22},
+      {"tts": "Same game. Your space.", "rate": "+14%", "pitch": "+8Hz", "volume": "+8%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "08b_hydra",
+    "mood": "hype",
+    "caption_style": "FightSub",
+    "sub": "Here's Hydra Punch, fresh from Lux3D, in the ring.",
+    "parts": [
+      {"tts": "Here's Hydra Punch!", "rate": "+18%", "pitch": "+10Hz", "volume": "+12%", "silence_after": 0.22},
+      {"tts": "Fresh from Lux 3-D... in the ring.", "rate": "+14%", "pitch": "+8Hz", "volume": "+6%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "09_gallery",
+    "mood": "calm",
+    "caption_style": "Sub",
+    "sub": "The gallery shows what was uploaded next to what Lux3D and RenderCloud made of it — photo, concept, poster, and a 3D turntable — so the before and after is always honest.",
+    "parts": [
+      {"tts": "The gallery shows what was uploaded, next to what Lux 3-D and RenderCloud made of it.", "rate": "+4%", "pitch": "+2Hz", "volume": "+0%", "silence_after": 0.16},
+      {"tts": "Photo, concept, poster, and a 3-D turntable...", "rate": "+5%", "pitch": "+2Hz", "volume": "+0%", "silence_after": 0.14},
+      {"tts": "so the before and after is always honest.", "rate": "+3%", "pitch": "+1Hz", "volume": "+0%", "silence_after": 0.0}
+    ]
+  },
+  {
+    "id": "10_close",
+    "mood": "hype",
+    "caption_style": "MobileSub",
+    "sub": "Win, and you leave with a RenderCloud KO card. It plays on a phone, too. Anything Fighter — built with Aholo Lux3D, SpatialGen, Viewer, Reality, and RenderCloud. Try it at anything-fighter.vercel.app. #Manycorehackathon.",
+    "parts": [
+      {"tts": "Win, and you leave with a RenderCloud K.O. card.", "rate": "+12%", "pitch": "+6Hz", "volume": "+4%", "silence_after": 0.16},
+      {"tts": "It plays on a phone, too.", "rate": "+10%", "pitch": "+5Hz", "volume": "+4%", "silence_after": 0.20},
+      {"tts": "Anything Fighter — built with Aholo Lux 3-D, Spatial Gen, Viewer, Reality, and RenderCloud.", "rate": "+8%", "pitch": "+4Hz", "volume": "+2%", "silence_after": 0.22},
+      {"tts": "Try it at anything-fighter dot vercel dot app.", "rate": "+12%", "pitch": "+6Hz", "volume": "+4%", "silence_after": 0.18},
+      {"tts": "Hashtag Manycore Hackathon!", "rate": "+16%", "pitch": "+8Hz", "volume": "+10%", "silence_after": 0.0}
+    ]
+  }
+]

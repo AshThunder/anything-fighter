@@ -157,15 +157,66 @@ The form also asks for **ecosystem devices** (use "None" unless the owner adds h
 - Application awards: expert-nominated. Creativity awards: community-nominated. Popularity Awards are separate and do not count toward Top 6 scores.
 - Prize pool is published in the submission rules (Special / First / Second / Third / Application / Creativity / Popularity). The Special Award ("3D AI New Species") may go unawarded.
 
-### Current Competition status (as of 13 Nov 2026, WAT)
+### Current Competition status (as of 13 Nov 2026, ~21:35 WAT)
 
 - Team confirmed, idea submitted.
-- **Final submission form is still empty (0/4).** Fill it as a **draft** when asked; **never submit without the owner's explicit OK**.
+- **Official submission is saved as a draft only** at https://www.aholo.ai/hackathon/my ("Draft saved · Nov 13 21:22", **4/4** required items). **Never press Submit without the owner's explicit OK.** Deadline: **19 Nov 2026, 12:00 noon WAT**. Details below.
 - LuxReal questionnaire was already submitted (13 Nov 2026) with email `chrisgoldog@gmail.com`, LuxReal ID `3FO4FONYS18J`, area of interest **Interactive Film Games (FMV)**, and "Have you used LuxReal before? **No**". A copy was emailed to the same address. Their post said credits take 1–2 days to appear.
+
+### Deliverables status (13 Nov 2026, ~21:35 WAT)
+
+The app itself was already on production. This block covers the report, demo video, live-forge lock, official form, and X post. Small sources plus the report PDF now live in [`submission/`](./submission/) (see `submission/README.md`). Demo videos, clips, `.venv`, and report screenshot assets stay on the recovery box only and are not in git.
+
+**Project report**
+
+- Deliverable: `/workspace/report/Anything-Fighter-Report.pdf` (12 pages, ~3.1 MB). A copy is at `submission/Anything-Fighter-Report.pdf`.
+- Built from `/workspace/report/Anything-Fighter-Report.html` (copy: `submission/report/`).
+- Screenshots were retaken from the live site and show the **"Aholo live"** badge (no Mock label). Page-3 asset is `forge-panel.jpg`; page-10 is `forge-optin-m.jpg`.
+- Rebuild scripts: `/workspace/report/build/` (`pdf.mjs`, `shots.mjs`, `mob.mjs`, `retake-forge.mjs`); copies in `submission/report/build/`. Fonts and screenshot binaries remain on the box at `/workspace/report/assets/` and were not committed.
+
+**Demo video v2** (this is the cut uploaded to the form)
+
+- File: `/workspace/demo/Anything-Fighter-Demo-v2.mp4` (2:08, 1080p30, ~21 MB). **Not in git.** v1 (`Anything-Fighter-Demo.mp4`, Guy voice) is superseded.
+- Voice: edge-tts `en-GB-RyanNeural` with expressive per-line rate, pitch, and volume. Gameplay cuts sped to **1.7–1.8×** in the edit (no re-record).
+- Plan and script: `/workspace/demo/DEMO-PLAN.md` (copy: `submission/demo/DEMO-PLAN.md`).
+- Rebuild on the box (takes about 2 minutes):
+
+```bash
+/workspace/demo/.venv/bin/python /workspace/demo/record/assemble.py \
+    --voice en-GB-RyanNeural \
+    --output /workspace/demo/Anything-Fighter-Demo-v2.mp4
+```
+
+  Add `--skip-vo` to reuse the existing voiceover. Sources are also snapshotted under `submission/demo/`.
+
+**One live forge used for the demo — do not run more paid Aholo jobs without the owner's approval**
+
+- **Hydra Punch**, job `gen-mwfchqnq-a74ca3`, from the fire-hydrant example photo, sharing off. Finished ~20:18 WAT with all 6 pipeline steps. It is in the live gallery: https://anything-fighter.vercel.app/gallery
+- Lock file: `/workspace/demo/clips/FORGE-LOCK.json` (copy: `submission/demo/FORGE-LOCK.json`). Treat a present lock as "the approved forge is used up."
+
+**Official submission form**
+
+- Saved as a **DRAFT only** at https://www.aholo.ai/hackathon/my — "Draft saved · Nov 13 21:22", 4/4 required items. **Submit was never pressed.**
+- Uploaded: demo video v2 (limit 1 GB) and the report PDF (limit 500 MB).
+- Track: **Gaming Application Award** only. Devices: **None** (options were Insta360, DEEP Robotics, WorkBuddy; the app uses Aholo software in the browser and a regular phone camera for the existing Reality scan, not those devices). Source link: this GitHub repo.
+- Lux3D confirmation is checked. The **submission-notice agreement is left UNCHECKED** for the owner. The **X post link is blank**.
+- When the owner posts the tweet and sends the link, add it to the draft and save again. **Never press Submit without the owner's explicit OK.**
+
+**X post**
+
+- Drafted as an X intent link (the X plugin is not connected, so nothing was posted). Tags **@ManycoreTech** (verified Manycore account) and **@Aholo_Lux3D** (Lux3D line). Hashtags: `#Manycorehackathon` `#Aholo` `#3DAI` `#gamedev`.
+- Not posted yet. The longer draft needs X Premium; attach the demo video (or a short cut) when posting. After it is up, paste the post URL into the form draft and save — still do not submit unless the owner says to.
+
+**Known issues in the demo recordings** (the live site is a separate matter)
+
+- Arenas look soft in the recordings because the box has no GPU (SwiftShader).
+- There is no in-fight KO card in the video.
+- The Hydra Punch beat is short (~4.5 s). Lengthening it was offered; the owner has not asked for a recut.
+
 
 ### Credits
 
-Hackathon grant was **3,600** credits. Balance was about **3,148** before testing on 13 Nov 2026. Live end-to-end forges and related tests that day were estimated at **~120–140 credits** (morning), then **~40–45** for the Mama re-rig (rig 15 + 8-clip retarget + RenderCloud poster) and **~40–45** for the SDK verification forge (mesh 1 + rig 15 + 8-clip retarget + poster; concept step skipped). Rough total for 13 Nov: **~200–230**. **Do not treat that as an exact remaining balance — check the Aholo dashboard** before running more live jobs.
+Hackathon grant was **3,600** credits. Balance was about **3,148** before testing on 13 Nov 2026. Live end-to-end forges and related tests that day were estimated at **~120–140 credits** (morning), then **~40–45** for the Mama re-rig (rig 15 + 8-clip retarget + RenderCloud poster) and **~40–45** for the SDK verification forge (mesh 1 + rig 15 + 8-clip retarget + poster; concept step skipped). Rough total for 13 Nov morning/afternoon: **~200–230**, plus one later owner-approved live forge (**Hydra Punch**, `gen-mwfchqnq-a74ca3`, ~20:18 WAT) on the same ~35–60 credit order. **Do not treat that as an exact remaining balance — check the Aholo dashboard** before running more live jobs. The approved demo forge is used up; see the deliverables section above.
 
 Live forges are capped in the app to protect the budget (`FORGE_IP_DAILY_LIMIT` default 2 per IP per Lagos day, `FORGE_GLOBAL_DAILY_LIMIT` default 15). A full live forge is on the order of **~35–60 credits** (concept image ~12, img-to-3D ~1, auto-rig ~15, retarget ~3/clip × up to 10, plus a non-fatal RenderCloud poster). SpatialGen worlds are 10 credits each; Reality Flash reconstructions are 20. Scripted roster forges and e2e runs spend credits too — do not fire them casually.
 
@@ -477,7 +528,11 @@ The app originally lived only on Vercel. Source was recovered from a production 
 
 ---
 
-## 9. Current status & known issues (13 Nov 2026, ~08:25 WAT)
+## 9. Current status & known issues (13 Nov 2026)
+
+Hackathon report / video / form / X-post status as of **~21:35 WAT** is in §3 "Deliverables status". The production and bug notes below begin at ~08:25 WAT and were updated through the afternoon.
+
+
 
 **Production:** https://anything-fighter.vercel.app → deployment **`dpl_2gsDTpoAx3Jzsv2uvTsKvNeVtUen`** (commit `5e7abd9`: flat UI/UX pass, no gradients; deployed 13 Nov 2026 ~17:01 WAT via the Vercel MCP connector, Git source). Rollback target if needed: `dpl_4mu7EzAvB7RHyR89NdWSmaNGkrS3` (commit `3813922`: gameplay package, jump/crouch, CPU difficulty, generated opponents, freestyle arms; ~16:30 WAT). Before that: `dpl_ACftxh6e8xzkcUiKucitMYsezEST` (commit `0ef461f`: durable Blob storage live, photo privacy, cache headers; ~14:36 WAT). Before that: `dpl_5fesGPGHSXz11jN5JmFbVbJ4kPw1` (`76b8853`, reliability + Android fix, ~13:16 WAT); `dpl_292pigZcsTVWyhW8THvRx3pSLT8v` (commit `90acc20`: Android black-arena fix, never-black splat fallbacks, portrait 3/4 camera); `dpl_6qmMATG1V36wf8K8JSLBJw1a1RYW` (`45c0017`: mobile fight-screen fixes + splat auto-fit); `dpl_5zUXe85v37fNY2g3rg1yGvY4tVo3` (`31af7df`: UI redesign + viewer fix). Earlier today: `dpl_FsPMx6FaR71B4q1Veyu8vBxPzvpm` (SDK migration, `1c425bf`), `dpl_EeLbHb9dMiKqMegQNLRU3NW3Xssg` (freestyle animation + rerig, `15a8184`).
 
@@ -635,6 +690,12 @@ Not started yet. Move each one into "In progress right now" when you begin it, a
 - Several agents may work in this repo. Stage files by name (never `git add -A`) and `git pull --rebase` before committing.
 - Before killing a dev server, check which agent owns it. A stray `next-server` (PID 51554) was killed by mistake on 13 Nov.
 
+### Open issues (reported 13 Nov, mobile)
+
+The owner reported new mobile gameplay issues on 13 Nov 2026 (after the submission draft was saved). They are being triaged; details were not written up in this handoff pass. Do not treat this placeholder as a fix list or close the reports from it.
+
+---
+
 ## 10. Roadmap / next steps
 
 Do these in roughly this order unless the owner directs otherwise.
@@ -642,10 +703,10 @@ Do these in roughly this order unless the owner directs otherwise.
 1. ~~Mama re-rig~~ done. ~~Fighting-game UI redesign~~ done. ~~Official SDK migration~~ done (app code; CLI scripts still raw REST).
 2. ~~Tune splat placement~~ done (`54d363f`, `45c0017`; auto-fit for future worlds).
 3. Optionally migrate `scripts/*.mjs` to the SDKs; optionally try `lux3d.imageToFourView` then multi-view `imgTo3d` (G1) for better meshes (extra credits; test once).
-4. **Project report** (PDF or PPT) covering concept, development, asset iterations, and results — required for submission.
-5. **Demo video** of the real app running (voiceover/subtitles OK).
-6. **Fill the official submission form as a draft** (demo link, report, track = Gaming, devices = None, source repo, etc.). **Do not submit without the owner's explicit OK.**
-7. **Draft an X post** with `#Manycorehackathon` for the owner to post. Do not post it yourself.
+4. ~~**Project report**~~ done (13 Nov ~19:28 WAT). 12-page PDF at `/workspace/report/Anything-Fighter-Report.pdf` and `submission/Anything-Fighter-Report.pdf`. Live-site screenshots; "Aholo live" badge.
+5. ~~**Demo video**~~ done (v2, 13 Nov ~21:00 WAT). `/workspace/demo/Anything-Fighter-Demo-v2.mp4` (2:08, Ryan expressive VO, gameplay 1.7–1.8×). Not in git. Recut notes (soft arenas, no in-fight KO card, short Hydra Punch beat) are in §3.
+6. ~~**Fill the official submission form as a draft**~~ done (13 Nov 21:22 WAT, 4/4, Gaming, Devices = None, repo link, v2 video + report uploaded). The agreement box and X-post link are still open. **Do not submit without the owner's explicit OK.**
+7. ~~**Draft an X post**~~ drafted (intent link tagging @ManycoreTech and @Aholo_Lux3D, hashtags `#Manycorehackathon` `#Aholo` `#3DAI` `#gamedev`). **Not posted yet.** After the owner posts it, add the URL to the form draft and save — still do not submit unless they say to.
 8. **LuxReal KO replays / trailer:** LuxReal has **no public video API**. An invitation / Lux3D-related key from Manycore is required for deeper integration. The survey is already in; credits may take 1–2 days. Meanwhile `scripts/luxreal-pack.mjs` can assemble posed GLBs + posters + panos for manual upload at the LuxReal web app when those files exist. LuxReal ID for this account: `3FO4FONYS18J`.
 9. Ask Aholo support to cancel the duplicate world jobs `3FO4K4V8IL5L` and `3FO4K4V8IOHM` (owner decides; do not contact them without approval).
 
@@ -675,6 +736,12 @@ Do these in roughly this order unless the owner directs otherwise.
 | `3813922` | Gameplay package (strings, special, super meter, parry, knockdowns), jump/crouch (highs / lows / overheads / anti-air), CPU Easy/Normal/Hard, generated fighters as opponent (FIGHT AGAINST, gallery Fight vs, `p2=gen-…`), freestyle arm rig (no T-pose), touch Jump/Crouch/Special/Super, `npm run test:sim`. Deployed as `dpl_4mu7EzAvB7RHyR89NdWSmaNGkrS3` |
 | `0ef461f` | Durable Blob storage live (store `anything-fighter-blob`), 1-year immutable caching for forged assets, `/api/health` (+probe), players' photos private. Deployed as `dpl_ACftxh6e8xzkcUiKucitMYsezEST` |
 | `5e7abd9` | Flat UI/UX pass: no gradients anywhere, design tokens + `.btn`/`.card` system, shared header with "Powered by Aholo" badge, clearer home / select / stage / forge progress / gallery, solid segmented life + super bars, SVG super ring, unified 44 px+ touch pad, mobile back button, vignette removed. Deployed as `dpl_2gsDTpoAx3Jzsv2uvTsKvNeVtUen` |
+| `ea372de` | HANDOFF: flat UI deploy `dpl_2gsDTpoAx3Jzsv2uvTsKvNeVtUen` + prod verification |
+| `94fea40` | Gallery button, clearer fighter picker, opt-in photo sharing, and room-scan UX |
+| `1b7c0c7` | Fight-in-your-room: upload to Aholo OUS, not through Vercel |
+| `2ec30af` | Make Gallery hard to miss, and fix blank gallery previews |
+| `a3cf281` | Hide Kicks Test, show gallery before/after photos, and tighten mobile layout |
+| *(this commit)* | HANDOFF: hackathon deliverables as of 13 Nov 2026 ~21:35 WAT; add `submission/` packet (report PDF + small sources). Form remains a draft. |
 
 Later commits may exist — run `git log` before you start.
 
