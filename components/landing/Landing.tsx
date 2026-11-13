@@ -176,7 +176,7 @@ function ForgePanel({ live }: { live: boolean | null }) {
       </button>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted">
-          <input type="checkbox" checked={exportPrint} onChange={(e) => setExportPrint(e.target.checked)} className="h-5 w-5 accent-[#ff5a1f]" />
+          <input type="checkbox" checked={exportPrint} onChange={(e) => setExportPrint(e.target.checked)} className="h-6 w-6 shrink-0 accent-[#ff5a1f]" />
           Also export printable STL / 3MF
         </label>
         <span className={`flex items-center gap-1.5 text-xs font-semibold ${live ? "text-ok" : "text-gold"}`}>
@@ -193,13 +193,13 @@ function ForgePanel({ live }: { live: boolean | null }) {
               setSharePhoto(e.target.checked);
               if (!e.target.checked) setAttested(false);
             }}
-            className="mt-0.5 h-5 w-5 shrink-0 accent-[#ff5a1f]"
+            className="mt-0.5 h-6 w-6 shrink-0 accent-[#ff5a1f]"
           />
           <span>Share my original photo in the Gallery (off by default)</span>
         </label>
         {sharePhoto && (
           <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-muted">
-            <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#ff5a1f]" />
+            <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-0.5 h-6 w-6 shrink-0 accent-[#ff5a1f]" />
             <span>{PHOTO_ATTESTATION}</span>
           </label>
         )}
@@ -317,7 +317,7 @@ export default function Landing() {
         <section className="grid items-center gap-6 md:grid-cols-[1fr_1.05fr] md:gap-10 [&>*]:min-w-0">
           <div className="flex flex-col gap-4">
             <span className="eyebrow">Manycore Aholo 3D AI Hackathon · Gaming</span>
-            <h1 className="arcade-title text-[2.35rem] leading-[0.95] sm:text-6xl lg:text-7xl">
+            <h1 className="arcade-title text-[clamp(1.7rem,8vw,2.35rem)] leading-[0.95] [overflow-wrap:anywhere] sm:text-6xl lg:text-7xl">
               Snap anything.
               <br />
               <span className="text-blaze">Fight everything.</span>
@@ -388,7 +388,7 @@ export default function Landing() {
         </section>
 
         <footer className="border-t border-line py-5 text-center text-xs text-dim">
-          <Link href="/gallery" className="font-semibold text-muted hover:text-fg">
+          <Link href="/gallery" className="inline-flex min-h-11 items-center px-2 font-semibold text-muted hover:text-fg">
             Gallery
           </Link>
           <span aria-hidden className="mx-2">

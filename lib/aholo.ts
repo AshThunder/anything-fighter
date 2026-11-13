@@ -5,8 +5,9 @@ import { AholoError, apiKey, call, isMockMode, lux3dClient, uploadAsset } from "
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { isPrivateFighterFile } from "./fighters";
+import { EXAMPLE_PHOTOS } from "./gallery-photos";
 import { LUX3D_ANIMATION_MAP, LUX3D_RETARGET_IDS, MOVES, type Move } from "./moves";
-import { STARTER_ROSTER_IDS, type AholoServiceKey, type FighterDef } from "./fighters";
+import { STARTER_ROSTER_IDS, UNLISTED_FIGHTER_IDS, type AholoServiceKey, type FighterDef } from "./fighters";
 import { optimizeFighterGlb, shrinkTextures, stripToAnimation, weldSimplify } from "./optimize";
 import { bakePose } from "./pose";
 import { ingestCreate, ingestGet, renderPoll, renderSubmit } from "./poster";
@@ -785,14 +786,31 @@ export async function listGeneratedFighters(): Promise<FighterDef[]> {
       const raw = await readFighterFile(e, "fighter.json");
       if (!raw) continue;
       const f: FighterDef = JSON.parse(raw.toString("utf8"));
-      if (f.hidden) continue;
-      const model = f.modelUrl.match(/\/api\/assets\/[^/]+\/([^/?]+)$/)?.[1];
-      if (model && !(await fighterFileProbe(e, model))) continue;
+      if (f.hidden || (UNLISTED_FIGHTER_IDS as readonly string[]).includes(e)) continue;
+      // last path segment of /api/assets/<id>/<file> — skip fighters whose GLB is gone (cache eviction)
+      const model = f.modelUrl?.split("?")[0].split("/").pop();
+      if (model && /\.glb$/i.test(model) && !(await fighterFileProbe(e, model))) continue;
       if (!backfill && durableEnabled() && e.startsWith("gen-") && f.source === "lux3d" && !durable.has(e) && !backfillTried.has(e)) backfill = e;
       const poster = path.join(process.cwd(), "public", "posters", e, "poster.png");
       if (!f.posterUrl && (await fs.stat(poster).catch(() => null))) f.posterUrl = `/api/assets/posters/${e}/poster.png`;
-      // privacy: older fighter.json files listed the player's photo; only an explicit photoPublic flag publishes it
-      if (f.photoPublic !== true) {
+      // Gallery source photo: shipped starter shots, an explicit opt-in, or a labeled example photo.
+      // Other gen-* uploads stay private unless photoPublic was set at forge time.
+      if (f.photoPublic === true && f.photoUrl) {
+        f.photoKind = "upload";
+      } else if (STARTER_ROSTER_IDS.includes(e)) {
+        const photoFile = f.photoUrl?.split("?")[0].split("/").pop() || "photo.png";
+        if (await fighterFileProbe(e, photoFile)) {
+          f.photoUrl = assetUrl(e, photoFile);
+          f.photoKind = "upload";
+        } else {
+          delete f.photoUrl;
+        }
+        delete f.photoPublic;
+      } else if (EXAMPLE_PHOTOS[e]) {
+        f.photoUrl = EXAMPLE_PHOTOS[e].src;
+        f.photoKind = "example";
+        delete f.photoPublic;
+      } else {
         delete f.photoUrl;
         delete f.photoPublic;
       }

@@ -465,7 +465,7 @@ function TouchPad({ meter }: { meter: number }) {
   const R = 26, C = 2 * Math.PI * R;
   return (
     <div
-      className="absolute inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] flex items-end justify-between gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] [@media(hover:hover)]:hidden"
+      className="absolute inset-x-0 bottom-[max(0.5rem,env(safe-area-inset-bottom))] flex items-end justify-between gap-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] [@media(hover:hover)]:hidden [@media(orientation:landscape)_and_(max-height:500px)]:origin-bottom [@media(orientation:landscape)_and_(max-height:500px)]:scale-90"
       data-touchpad
     >
       <div className="grid grid-cols-2 gap-2">

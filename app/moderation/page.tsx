@@ -48,8 +48,8 @@ export default function ModerationPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 text-fg">
-      <h1 className="arcade-title text-3xl">Moderation</h1>
+    <main className="mx-auto max-w-3xl overflow-x-hidden px-4 py-6 text-fg sm:py-8">
+      <h1 className="arcade-title text-[clamp(1.6rem,7vw,1.875rem)] [overflow-wrap:anywhere]">Moderation</h1>
       <p className="mt-2 text-sm text-muted">Owner-only queue. This page is not linked from the public site. Use the GALLERY_SECRET value.</p>
       <form
         className="mt-4 flex flex-wrap gap-2"
@@ -63,7 +63,7 @@ export default function ModerationPage() {
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
           placeholder="Secret"
-          className="h-11 min-w-48 flex-1 rounded-lg border-2 border-line-strong bg-ink px-3 text-fg"
+          className="h-11 min-w-0 flex-1 rounded-lg border-2 border-line-strong bg-ink px-3 text-fg"
         />
         <button type="submit" className="btn btn-primary">
           Load reports

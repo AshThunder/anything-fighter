@@ -127,7 +127,7 @@ export default function FightClient() {
       <Link
         href="/"
         aria-label="Back to the roster"
-        className="absolute left-3 top-[5.6rem] z-10 flex h-11 items-center rounded-lg border border-line bg-ink/70 px-3 text-sm font-semibold text-fg hover:border-line-strong md:bottom-4 md:left-4 md:top-auto"
+        className="absolute left-3 top-[5.6rem] z-10 flex h-11 min-w-11 items-center justify-center rounded-lg border border-line bg-ink/70 px-3 text-sm font-semibold text-fg hover:border-line-strong md:bottom-4 md:left-4 md:top-auto"
       >
         ← <span className="ml-1 hidden md:inline">Roster</span>
       </Link>

@@ -14,16 +14,16 @@ export function GalleryIcon({ className = "h-4 w-4" }: { className?: string }) {
 export function SiteHeader({ cta }: { cta?: "forge" | "gallery" }) {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-ink pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-6">
-        <Link href="/" className="flex min-h-11 items-center font-arcade text-lg leading-none tracking-tight text-fg sm:text-xl" aria-label="Anything Fighter home">
-          ANYTHING<span className="text-blaze">FIGHTER</span>
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-1.5 px-3 py-2 sm:gap-3 sm:px-6">
+        <Link href="/" className="flex min-h-11 min-w-0 shrink items-center font-arcade text-[15px] leading-none tracking-tight text-fg sm:text-xl" aria-label="Anything Fighter home">
+          <span className="max-[22.5rem]:hidden">ANYTHING</span><span className="text-blaze">FIGHTER</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <a
             href="https://www.aholo.ai/hackathon"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gold/60 px-2 text-[11px] font-bold uppercase tracking-wider text-gold hover:bg-gold/10 sm:px-2.5"
+            className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-gold/60 px-1.5 text-[11px] font-bold uppercase tracking-wider text-gold hover:bg-gold/10 sm:gap-1.5 sm:px-2.5"
             title="Built on Manycore Aholo: Lux3D, SpatialGen, Reality, Viewer, RenderCloud"
             data-aholo-badge
           >
@@ -36,7 +36,7 @@ export function SiteHeader({ cta }: { cta?: "forge" | "gallery" }) {
               <span className="hidden sm:inline">+ Forge a fighter</span>
             </Link>
           ) : (
-            <Link href="/gallery" className="btn btn-gold btn-sm px-3 font-extrabold uppercase tracking-wide" data-nav="gallery">
+            <Link href="/gallery" className="btn btn-gold btn-sm px-2 font-extrabold uppercase tracking-wide sm:px-3" data-nav="gallery">
               <GalleryIcon />
               Gallery
             </Link>

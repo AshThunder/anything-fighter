@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable} ${arcade.variable} h-full antialiased dark`}>
-      <body className="min-h-full bg-ink font-sans text-fg">{children}</body>
+      <body className="min-h-full overflow-x-hidden bg-ink font-sans text-fg">{children}</body>
     </html>
   );
 }

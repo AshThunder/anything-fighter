@@ -27,6 +27,8 @@ export interface FighterDef {
   photoUrl?: string;
   /** Player opted in to share their original photo in the gallery. Never inferred for older forges. */
   photoPublic?: boolean;
+  /** Gallery source-photo label: a real upload, or a credited stand-in. */
+  photoKind?: "upload" | "example";
   /** Hidden after an uploader delete or a moderation takedown; omitted from public lists. */
   hidden?: boolean;
   /** Optional printable export links (STL / 3MF / USDZ). */
@@ -85,3 +87,6 @@ export type ArenaKind = "stage" | "pano" | "splat";
 
 /** Pipeline test forges made while debugging prod: shown in the gallery (?all=1) but not in the roster. */
 export const GALLERY_ONLY_IDS = ["gen-mwekglv2-db32ab", "gen-mwel0i8j-076867", "gen-mwemw090-24ff0e"];
+
+/** Hidden from the public gallery and roster without deleting artefacts. Restore by removing the id. */
+export const UNLISTED_FIGHTER_IDS = ["gen-mwekglv2-db32ab"] as const;
