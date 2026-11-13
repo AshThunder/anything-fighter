@@ -3,7 +3,10 @@ import localFont from "next/font/local";
 import "./globals.css";
 
 const display = localFont({ src: "./fonts/SpaceGrotesk.woff2", variable: "--font-sg", weight: "300 700" });
+const arcade = localFont({ src: "./fonts/Bungee.woff2", variable: "--font-bungee", weight: "400", display: "swap" });
 const body = localFont({ src: "./fonts/Inter.woff2", variable: "--font-inter", weight: "100 900" });
+
+export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0d0b09" };
 
 export const metadata: Metadata = {
   title: "Anything Fighter · Aholo Lux3D",
@@ -12,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} h-full antialiased dark`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${arcade.variable} h-full antialiased dark`}>
       <body className="min-h-full bg-[#0d0b09] font-sans text-orange-50">{children}</body>
     </html>
   );

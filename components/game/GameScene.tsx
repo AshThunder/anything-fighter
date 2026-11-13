@@ -69,7 +69,16 @@ function PhaseDriver() {
   const phase = useGame((s) => s.phase);
   const setPhase = useGame((s) => s.setPhase);
   useEffect(() => {
-    if (phase === "loading") setPhase("intro");
+    if (phase === "loading") setPhase(useGame.getState().mode === "practice" ? "intro" : "vs");
+    if (phase === "vs") {
+      sfx("whoosh");
+      const s = setTimeout(() => sfx("vs"), 450);
+      const t = setTimeout(() => setPhase("intro"), 2400);
+      return () => {
+        clearTimeout(t);
+        clearTimeout(s);
+      };
+    }
     if (phase === "fight" && useGame.getState().mode !== "practice") startClip(canvases);
     if (phase === "intro") {
       resetSim();
