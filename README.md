@@ -128,11 +128,20 @@ cache API is unavailable. Limits do not apply in mock mode.
 | | Player 1 | Player 2 (2-player mode) |
 |---|---|---|
 | Move | A / D (solo: also ← →) | ← / → |
+| Jump | W (solo: also ↑ / Space) | ↑ |
+| Crouch (hold) | S (solo: also ↓) | ↓ |
 | Punch | J (2P: F) | K / Numpad 1 |
 | Kick (heavy) | K (2P: G) | L / Numpad 2 |
-| Block | L / Shift / S | ↓ / Numpad 0 |
+| Block (hold; with crouch = crouch-block) | L / Shift / C (2P: H) | M / Numpad 0 |
+| Special | U / V, or back→forward + punch (2P: R) | O / Numpad 3 |
+| Super (meter full) | I / B (2P: T) | P / Numpad 6 |
 
-Touch devices get an on-screen pad. Modes: **1P vs CPU**, **2 players on one keyboard** (landing toggle or `&mode=2p`),
+Moves: **P P K** (jab → cross → hook, knockdown) and **K P** strings cancel on hit; **crouch + P** low punch, **crouch + K**
+sweep (knockdown; lows must be crouch-blocked), **P or K in the air** = jump attack (overhead: block it standing).
+Jabs and crosses whiff over a crouch; most ground attacks miss a jumping fighter, but a clean hit on anyone airborne is
+an **anti-air knockdown** (kick and hook reach highest). Tap block just before a hit to **parry**.
+
+Touch devices get an on-screen pad (▲ Jump, ▼ Crouch, ◀ ▶, Punch, Kick, Block, Special, Super with the meter ring). Modes: **1P vs CPU**, **2 players on one keyboard** (landing toggle or `&mode=2p`),
 **practice** (sparring partner, infinite time — shown while your fighter is forging). The 🔊 button toggles sound.
 After a fight: rematch, **KO card** (1600×900 PNG with the RenderCloud poster) and a **clip** of the fight
 (MediaRecorder canvas capture → MP4 where supported, else WebM) to download and share manually. Nothing is posted automatically.
@@ -156,7 +165,7 @@ After a fight: rematch, **KO card** (1600×900 PNG with the RenderCloud poster) 
 | `lib/moves.ts` | Move set ↔ Lux3D preset animation IDs |
 | `app/api/pipeline` (POST), `app/api/pipeline/[id]` (GET = poll+advance), `app/api/fighters`, `app/api/assets/[...path]` | API routes (assets route serves files generated after build) |
 
-Controls: **A/D** (or arrows) move · **J** punch · **K** kick (heavy) · **L / Shift / S** block. Add `&debug=1` to `/fight` to expose `window.__sim` for recording.
+Controls: see **Play** above (A/D move · W jump · S crouch · J punch · K kick · L block · U special · I super). Add `&debug=1` to `/fight` to expose `window.__sim` for recording.
 
 ## Move set → Lux3D retarget presets (≤10 per task)
 

@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useGame } from "@/lib/game/store";
-import { sim } from "@/lib/game/sim";
-import { press, setHeld } from "@/lib/game/input";
+import type { FighterDef } from "@/lib/fighters";
+import { METER_MAX, sim } from "@/lib/game/sim";
+import { jump, press, setHeld } from "@/lib/game/input";
 import { isMuted, setMuted, sfx, unlockAudio } from "@/lib/game/audio";
 import { getClip, onClip, snapshotCard } from "@/lib/game/recorder";
 
@@ -92,8 +93,80 @@ function useScreenShake() {
       ],
       { duration: 260, easing: "ease-out" },
     );
-    navigator.vibrate?.(30);
   }, [lastHit]);
+}
+
+/** Live super-meter values (polled from the sim, 10×/s). */
+function useMeters(): [number, number] {
+  const [m, setM] = useState<[number, number]>([0, 0]);
+  useEffect(() => {
+    const i = setInterval(() => {
+      const a = Math.round(sim.f[0].meter), b = Math.round(sim.f[1].meter);
+      setM((p) => (p[0] === a && p[1] === b ? p : [a, b]));
+    }, 100);
+    return () => clearInterval(i);
+  }, []);
+  return m;
+}
+
+/** Super meter under each lifebar; glows and says SUPER when full. */
+function MeterBar({ idx, value }: { idx: 0 | 1; value: number }) {
+  const full = value >= METER_MAX;
+  const right = idx === 1;
+  return (
+    <div className={`flex items-center gap-1 ${right ? "flex-row-reverse" : ""}`} data-meter={idx} data-meter-value={value}>
+      <div className={`relative h-2 w-24 overflow-hidden rounded-sm border border-black/70 bg-black/70 md:h-2.5 md:w-40 ${right ? "-scale-x-100" : ""}`}>
+        <div
+          className={`absolute inset-y-0 left-0 transition-[width] duration-150 ${full ? "animate-pulse" : ""}`}
+          style={{ width: `${value}%`, background: full ? "linear-gradient(90deg,#22d3ee,#e879f9,#facc15)" : "linear-gradient(90deg,#0ea5e9,#22d3ee)" }}
+        />
+      </div>
+      <span className={`font-arcade text-[8px] leading-none md:text-[10px] ${full ? "text-yellow-300 drop-shadow-[0_0_6px_rgba(250,204,21,0.9)]" : "text-cyan-200/60"}`}>
+        {full ? "SUPER" : "METER"}
+      </span>
+    </div>
+  );
+}
+
+/** SPECIAL / SUPER / PARRY / COUNTER / KNOCKDOWN callouts + the white SUPER flash. */
+function Callout() {
+  const c = useGame((s) => s.callout);
+  const fighters = useGame((s) => s.fighters);
+  const [hidden, setHidden] = useState(-1);
+  useEffect(() => {
+    if (!c) return;
+    const t = setTimeout(() => setHidden(c.id), c.kind === "super" ? 1300 : 800);
+    return () => clearTimeout(t);
+  }, [c]);
+  const show = c && c.id !== hidden ? c : null;
+  if (!show) return null;
+  const sup = show.kind === "super";
+  const color = show.kind === "parry" ? "#e0f2fe" : sup ? "#facc15" : show.kind === "special" ? fighters?.[show.who].color ?? "#f97316" : "#fde68a";
+  return (
+    <>
+      {sup && <div key={`f${show.id}`} className="pointer-events-none absolute inset-0 bg-white animate-[superflash_0.45s_ease-out_forwards]" data-super-flash />}
+      <div
+        key={show.id}
+        className={`pointer-events-none absolute inset-x-0 ${sup ? "top-[30%]" : "top-[24%]"} flex flex-col items-center animate-[pop_0.25s_ease-out]`}
+        data-callout={show.kind}
+      >
+        <div
+          className={`font-arcade text-stroke ${sup ? "text-6xl md:text-8xl" : "text-3xl md:text-5xl"}`}
+          style={{ color, filter: `drop-shadow(0 0 18px ${color})` }}
+        >
+          {show.text}
+        </div>
+        {sup && fighters && <div className="mt-1 font-display text-sm uppercase tracking-[0.3em] text-white/90">{fighters[show.who].name}</div>}
+      </div>
+    </>
+  );
+}
+
+/** How this fighter's body + moves came from Aholo (shown on the VS screen). */
+function aholoTag(f: FighterDef) {
+  const n = Object.keys(f.animUrls ?? {}).length;
+  if (!f.id.startsWith("gen-")) return "Aholo Lux3D starter · retargeted clips";
+  return n ? `Forged with Lux3D · rig + ${n} Aholo clips` : "Forged with Lux3D · freestyle moves";
 }
 
 /** Pre-round VS screen: RenderCloud posters / Lux3D concepts slam in from both sides. Tap to skip. */
@@ -149,6 +222,9 @@ function VsSplash() {
                 {tags[i]}
               </span>
               <span className="font-arcade text-2xl leading-none text-white text-stroke drop-shadow-[0_4px_0_rgba(0,0,0,0.6)] md:text-4xl">{f.name}</span>
+              <span className="mt-1 px-2 text-[9px] uppercase tracking-wider text-white/70 md:text-[11px]" data-aholo-tag>
+                {aholoTag(f)}
+              </span>
             </div>
           </div>
         );
@@ -351,8 +427,8 @@ function Banner() {
   return null;
 }
 
-function TouchPad() {
-  const hold = (k: "left" | "right" | "block") => ({
+function TouchPad({ meter }: { meter: number }) {
+  const hold = (k: "left" | "right" | "block" | "down") => ({
     onPointerDown: (e: React.PointerEvent) => {
       e.preventDefault();
       unlockAudio();
@@ -362,31 +438,82 @@ function TouchPad() {
     onPointerLeave: () => setHeld(k, false),
     onPointerCancel: () => setHeld(k, false),
   });
-  const tap = (a: "punch" | "kick") => ({
+  const tap = (a: "punch" | "kick" | "special" | "super") => ({
     onPointerDown: (e: React.PointerEvent) => {
       e.preventDefault();
       unlockAudio();
       press(a);
+      navigator.vibrate?.(8);
     },
   });
-  // Sized to fit a 360–390 px portrait screen: d-pad left, arcade diamond right (Punch biggest, under the thumb).
+  const full = meter >= METER_MAX;
+  // Sized for 360–412 px portrait: d-pad left; right = Punch (biggest, under the thumb), Kick above, Block left of
+  // Punch, Special above Block, Super (meter ring) on top. Every target ≥ 56 px.
   const btn =
-    "pointer-events-auto flex shrink-0 touch-none select-none items-center justify-center rounded-full border-2 border-white/25 bg-black/55 font-arcade text-[10px] leading-none text-orange-50 shadow-[inset_0_-3px_0_rgba(0,0,0,0.4)] active:scale-90 active:bg-orange-500/50";
+    "pointer-events-auto absolute flex touch-none select-none items-center justify-center rounded-full border-2 border-white/25 bg-black/55 font-arcade text-[10px] leading-none text-orange-50 shadow-[inset_0_-3px_0_rgba(0,0,0,0.4)] active:scale-90 active:bg-orange-500/50";
   return (
     <div
       className="absolute inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] flex items-end justify-between gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] [@media(hover:hover)]:hidden"
       data-touchpad
     >
-      <div className="flex gap-2">
-        <button className={`${btn} h-14 w-14 text-base`} aria-label="Move left" {...hold("left")}>◀</button>
-        <button className={`${btn} h-14 w-14 text-base`} aria-label="Move right" {...hold("right")}>▶</button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          className={`${btn} !relative h-14 w-16 flex-col gap-0.5 border-lime-300/50 text-[8px]`}
+          aria-label="Jump"
+          data-btn="jump"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            jump(0);
+            navigator.vibrate?.(6);
+          }}
+        >
+          <span className="text-base leading-none">▲</span>Jump
+        </button>
+        <button className={`${btn} !relative h-14 w-16 flex-col gap-0.5 border-violet-300/50 text-[8px]`} aria-label="Crouch" data-btn="crouch" {...hold("down")}>
+          <span className="text-base leading-none">▼</span>Crouch
+        </button>
+        <button className={`${btn} !relative h-16 w-16 text-base`} aria-label="Move left" {...hold("left")}>◀</button>
+        <button className={`${btn} !relative h-16 w-16 text-base`} aria-label="Move right" {...hold("right")}>▶</button>
       </div>
-      <div className="grid grid-cols-[3.5rem_4.5rem] grid-rows-[3.5rem_4.5rem] gap-1.5">
-        <span />
-        <button className={`${btn} h-14 w-14 justify-self-center border-sky-400/60 bg-sky-500/25`} {...tap("kick")}>Kick</button>
-        <button className={`${btn} h-14 w-14 self-center`} {...hold("block")}>Block</button>
-        <button className={`${btn} h-[4.5rem] w-[4.5rem] border-orange-400/70 bg-orange-500/35 text-[11px]`} {...tap("punch")}>Punch</button>
+      <div className="relative h-[13.5rem] w-[11.5rem] shrink-0">
+        <button
+          className={`${btn} right-[4.6rem] top-0 h-14 w-14 !border-0 p-[3px]`}
+          style={{ background: `conic-gradient(${full ? "#facc15" : "#22d3ee"} ${meter * 3.6}deg, rgba(255,255,255,0.12) 0)` }}
+          aria-label="Super"
+          data-btn="super"
+          {...tap("super")}
+        >
+          <span className={`flex h-full w-full items-center justify-center rounded-full ${full ? "bg-yellow-400/90 text-black animate-pulse" : "bg-black/80 text-cyan-100/70"}`}>Super</span>
+        </button>
+        <button className={`${btn} left-0 top-[4.1rem] h-14 w-14 border-fuchsia-400/60 bg-fuchsia-500/25 text-[9px]`} aria-label="Special" data-btn="special" {...tap("special")}>
+          Special
+        </button>
+        <button className={`${btn} right-0 top-[3.6rem] h-16 w-16 border-sky-400/60 bg-sky-500/25`} data-btn="kick" {...tap("kick")}>Kick</button>
+        <button className={`${btn} bottom-0 left-0 h-16 w-16`} data-btn="block" {...hold("block")}>Block</button>
+        <button className={`${btn} bottom-0 right-0 h-[5.25rem] w-[5.25rem] border-orange-400/70 bg-orange-500/35 text-[12px]`} data-btn="punch" {...tap("punch")}>Punch</button>
       </div>
+    </div>
+  );
+}
+
+/** Short move list: shown at the start of each fight, then fades (always on the desktop hint bar). */
+function ComboHint({ touch }: { touch: boolean }) {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setOn(false), 7000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!on) return null;
+  return (
+    <div
+      className={`pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-lg bg-black/55 px-3 py-1.5 text-center text-[11px] leading-snug text-orange-100/85 transition-opacity [@media(hover:hover)]:hidden ${touch ? "bottom-[15.5rem]" : "bottom-16"}`}
+      data-combo-hint
+    >
+      <b className="text-orange-300">Punch Punch Kick</b> · <b className="text-sky-300">Kick Punch</b> · <b className="text-fuchsia-300">◀▶+Punch</b> = Special
+      <br />
+      <b className="text-lime-300">Jump</b> over lows, hit in the air · <b className="text-violet-300">Crouch</b> under jabs, Crouch+Kick sweeps
+      <br />
+      Fill the meter, then <b className="text-yellow-300">SUPER</b> · tap Block just before a hit to parry
     </div>
   );
 }
@@ -412,17 +539,23 @@ export function Hud() {
   useScreenShake();
   const phase = useGame((s) => s.phase);
   const mode = useGame((s) => s.mode);
+  const meters = useMeters();
   const hint =
     mode === "2p"
       ? [
-          ["P1", "A/D · F punch · G kick · S block"],
-          ["P2", "←/→ · K punch · L kick · ↓ block"],
+          ["P1", "A/D · W jump · S crouch · F punch · G kick · H block · R special · T super"],
+          ["P2", "←/→ · ↑ jump · ↓ crouch · K punch · L kick · M block · O special · P super"],
         ]
       : [
           ["A/D", "move"],
+          ["W", "jump"],
+          ["S", "crouch"],
           ["J", "punch"],
           ["K", "kick"],
-          ["L / Shift", "block"],
+          ["L", "block"],
+          ["U or A→D+J", "special"],
+          ["I", "super"],
+          ["Strings", "J J K · K J · S+K sweep"],
         ];
   return (
     <div className="pointer-events-none absolute inset-0 select-none" data-hud>
@@ -431,14 +564,19 @@ export function Hud() {
         <Timer />
         <HealthBar idx={1} />
       </div>
+      <div className="mt-1 flex justify-between px-3 md:px-6" data-meters>
+        <MeterBar idx={0} value={meters[0]} />
+        <MeterBar idx={1} value={meters[1]} />
+      </div>
       <MuteButton />
       <HitCallout />
       <ComboCounter />
+      <Callout />
       <div className="pointer-events-auto">
         <Banner />
       </div>
       {phase === "fight" && (
-        <div className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 gap-4 rounded-xl bg-black/40 px-4 py-2 text-xs text-orange-100/70 [@media(hover:hover)]:flex">
+        <div className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 flex-wrap justify-center gap-x-4 gap-y-1 rounded-xl bg-black/40 px-4 py-2 text-xs text-orange-100/70 [@media(hover:hover)]:flex">
           {hint.map(([k, v]) => (
             <span key={k}>
               <b className="text-orange-300">{k}</b> {v}
@@ -446,7 +584,8 @@ export function Hud() {
           ))}
         </div>
       )}
-      {mode !== "2p" && (phase === "fight" || phase === "intro") && <TouchPad />}
+      {mode !== "2p" && (phase === "fight" || phase === "intro") && <TouchPad meter={meters[0]} />}
+      {phase === "fight" && mode !== "2p" && <ComboHint touch />}
     </div>
   );
 }

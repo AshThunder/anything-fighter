@@ -90,8 +90,11 @@ export default function GalleryClient() {
                 <button onClick={() => setOpen(open === f.id ? null : f.id)} className="rounded-lg border border-orange-300/25 px-2.5 py-1 text-xs">
                   {open === f.id ? "Hide 3D" : "3D"}
                 </button>
-                <Link href={`/fight?p1=${f.id}`} className="rounded-lg bg-orange-500 px-2.5 py-1 font-display text-xs font-bold text-black">
-                  Fight
+                <Link href={`/fight?p1=${f.id}`} className="rounded-lg bg-orange-500 px-2.5 py-1 font-display text-xs font-bold text-black" data-action="fight-as">
+                  Fight as
+                </Link>
+                <Link href={`/fight?p2=${f.id}`} className="rounded-lg border border-sky-400/60 px-2.5 py-1 font-display text-xs font-bold text-sky-100" data-action="fight-against">
+                  Fight vs
                 </Link>
               </div>
             </article>

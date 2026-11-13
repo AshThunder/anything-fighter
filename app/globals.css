@@ -80,3 +80,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
+@keyframes superflash {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}

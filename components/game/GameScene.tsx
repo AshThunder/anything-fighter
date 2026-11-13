@@ -4,7 +4,7 @@ import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { Suspense, useEffect, useState } from "react";
 import { Arena } from "@/components/arena/Arena";
 import { AholoSplatLayer, isMobileGPU } from "@/components/arena/AholoSplatLayer";
-import { CameraRig, HitSparks } from "./Effects";
+import { CameraRig, DashTrails, HitSparks } from "./Effects";
 import { Fighter } from "./Fighter";
 import { SafeModel } from "./SafeModel";
 import { StudioEnv } from "./StudioEnv";
@@ -21,22 +21,30 @@ import { resetAI, runAI } from "@/lib/game/ai";
 function GameLoop() {
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 1 / 20);
-    const { phase, applyHit, setPhase, setWinner, mode } = useGame.getState();
+    const { phase, applyHit, setPhase, setWinner, mode, level, notify } = useGame.getState();
     const fighting = phase === "fight";
     if (fighting) {
       readPlayerInput();
-      if (mode === "cpu") runAI(dt);
+      if (mode === "cpu") runAI(dt, level);
       else if (mode === "practice") {
-        runAI(dt, 0.3);
-        sim.f[1].queued = null; // sparring dummy: moves + blocks, never attacks
+        runAI(dt, "easy");
+        sim.f[1].buf = null; // sparring dummy: moves + blocks, never attacks
         for (const f of sim.f) f.hp = Math.max(f.hp, 25); // never KO in practice
         sim.time = 60;
       }
     }
     const events = step(dt, fighting);
     for (const e of events) {
+      if (e.kind === "move") {
+        notify(e.who, e.move);
+        sfx(e.move === "super" ? "vs" : "whoosh", e.move === "super" ? 1 : 1.6);
+        continue;
+      }
       applyHit(e.defender, sim.f[e.defender].hp, e.dmg, e.blocked, e.heavy);
-      sfx(e.blocked ? "block" : e.heavy ? "kick" : "punch", 0.8 + e.dmg / 20);
+      if (e.tag) notify(e.tag === "parry" ? e.defender : e.attacker, e.tag);
+      sfx(e.tag === "parry" ? "block" : e.blocked ? "block" : e.heavy ? "kick" : "punch", e.tag === "parry" ? 1.6 : 0.8 + e.dmg / 20);
+      // haptics on a phone: light tap per clean hit, longer buzz on heavy hits / knockdowns
+      if (!e.blocked && typeof navigator !== "undefined") navigator.vibrate?.(e.tag === "knockdown" || e.tag === "antiair" ? 60 : e.heavy ? 30 : 12);
     }
 
     if (fighting) {
@@ -46,6 +54,8 @@ function GameLoop() {
         const winner = (koIdx === 0 ? 1 : 0) as 0 | 1;
         sim.f[koIdx].state = "ko";
         sim.f[koIdx].stateT = 0;
+        sim.f[koIdx].atk = null;
+        sim.fx.superSlow = 0;
         sim.fx.slowmo = 0.3;
         sim.fx.shake = 1;
         setWinner(winner);
@@ -56,6 +66,7 @@ function GameLoop() {
           sim.fx.slowmo = 1;
           sim.f[winner].state = "victory";
           sim.f[winner].stateT = 0;
+          sim.f[winner].atk = null;
           useGame.getState().setPhase("victory");
           sfx("victory");
           setTimeout(() => stopClip(), 2500);
@@ -170,6 +181,7 @@ export default function GameScene() {
           <PhaseDriver />
         </Suspense>
         <HitSparks />
+        <DashTrails />
         <CameraRig />
         <GameLoop />
         {!splat && (
