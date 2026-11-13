@@ -3,7 +3,7 @@ import path from "node:path";
 import { readFighterFile } from "@/lib/store";
 import { ARENA_ROOT, arenaWorldId } from "@/lib/arenas-server";
 import { worldFileUrl } from "@/lib/world";
-import { isPrivateFighterFile } from "@/lib/fighters";
+import { isPhotoBlocked } from "@/lib/photo-privacy";
 
 const TYPES: Record<string, string> = {
   ".glb": "model/gltf-binary",
@@ -37,11 +37,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
   let buf: Buffer | null = null;
   let ext = "";
   let immutable = false;
-  if (parts.length === 2 && SAFE_ID.test(parts[0]) && SAFE_FILE.test(parts[1]) && !BLOCKED(parts[1]) && !isPrivateFighterFile(parts[0], parts[1])) {
+  if (parts.length === 2 && SAFE_ID.test(parts[0]) && SAFE_FILE.test(parts[1]) && !BLOCKED(parts[1]) && !(await isPhotoBlocked(parts[0], parts[1]))) {
     buf = await readFighterFile(parts[0], parts[1]);
     ext = path.extname(parts[1]).toLowerCase();
     // a finished forged fighter's files never change (new forge = new id): let the CDN keep them for a year
-    immutable = parts[0].startsWith("gen-") && parts[1] !== "fighter.json";
+    // photos are the exception: short/no-store cache so a takedown is immediate
+    const isPhoto = /^photo\./i.test(parts[1]);
+    immutable = parts[0].startsWith("gen-") && parts[1] !== "fighter.json" && !isPhoto;
   } else if (parts.length === 3 && parts[0] === "arenas" && SAFE_ID.test(parts[1]) && SAFE_FILE.test(parts[2]) && !BLOCKED(parts[2])) {
     try {
       buf = await fs.readFile(path.join(ARENA_ROOT, parts[1], parts[2]));
@@ -88,11 +90,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
     ext = ".png";
   }
   if (!buf) return new Response("Not found", { status: 404 });
+  const isPhoto = parts.length === 2 && /^photo\./i.test(parts[1]);
   return new Response(new Uint8Array(buf), {
     headers: {
       "Content-Type": TYPES[ext] ?? "application/octet-stream",
-      "Cache-Control": immutable ? "public, max-age=31536000, s-maxage=31536000, immutable" : "public, max-age=3600",
-      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": isPhoto
+        ? "private, no-store, max-age=0, must-revalidate"
+        : immutable
+          ? "public, max-age=31536000, s-maxage=31536000, immutable"
+          : "public, max-age=3600",
+      ...(isPhoto ? {} : { "Access-Control-Allow-Origin": "*" }),
     },
   });
 }

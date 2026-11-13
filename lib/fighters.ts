@@ -23,8 +23,12 @@ export interface FighterDef {
   thumbUrl?: string;
   /** Aholo RenderCloud poster (public/posters/<id>/poster.png). */
   posterUrl?: string;
-  /** Source object photo (self-generated for the starter roster). */
+  /** Source object photo (self-generated for the starter roster, or a player photo after an explicit opt-in). */
   photoUrl?: string;
+  /** Player opted in to share their original photo in the gallery. Never inferred for older forges. */
+  photoPublic?: boolean;
+  /** Hidden after an uploader delete or a moderation takedown; omitted from public lists. */
+  hidden?: boolean;
   /** Optional printable export links (STL / 3MF / USDZ). */
   exports?: Record<string, string>;
   createdAt?: number;
