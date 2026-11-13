@@ -89,21 +89,23 @@ export default function FightClient() {
   }, [p1, p2, arena, view, setup, attempt]);
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-[#0d0b09]">
+    <main className="relative h-dvh w-full overflow-hidden bg-ink">
       {ready && <GameScene />}
       {ready && <Hud />}
       {ready && notice && (
         <button
           onClick={() => setNotice(null)}
-          className="absolute left-1/2 top-16 z-20 max-w-[90vw] -translate-x-1/2 rounded-lg bg-black/70 px-3 py-1.5 text-xs text-orange-100/90"
+          className="absolute left-1/2 top-[9rem] z-20 min-h-11 max-w-[90vw] -translate-x-1/2 rounded-lg border border-gold/60 bg-ink px-3 py-1.5 text-sm text-fg md:top-28"
           data-notice="fighter-missing"
         >
           {notice} ✕
         </button>
       )}
       {!ready && (
-        <div className="flex h-full flex-col items-center justify-center gap-3 font-display text-orange-200/70">
-          {err ?? "Loading fighters…"}
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center font-display text-muted" role="status">
+          {!err && <div className="h-12 w-12 animate-spin rounded-full border-4 border-line border-t-blaze" aria-hidden />}
+          <span className={err ? "text-lg text-fg" : ""}>{err ?? "Loading fighters…"}</span>
+          {!err && <span className="text-xs text-dim">Fetching Lux3D models and the Aholo arena</span>}
           {err && (
             <div className="flex gap-2 text-sm">
               <button
@@ -111,19 +113,23 @@ export default function FightClient() {
                   setErr(null);
                   setAttempt((n) => n + 1);
                 }}
-                className="rounded-lg bg-orange-500 px-4 py-1.5 font-bold text-black"
+                className="btn btn-primary"
               >
                 Try again
               </button>
-              <Link href="/" className="rounded-lg border border-orange-300/30 px-4 py-1.5">
+              <Link href="/" className="btn btn-ghost">
                 Back to roster
               </Link>
             </div>
           )}
         </div>
       )}
-      <Link href="/" className="absolute left-4 bottom-4 z-10 hidden rounded-lg bg-black/40 px-3 py-1.5 text-xs text-orange-100/70 hover:text-orange-50 md:block">
-        ← Roster
+      <Link
+        href="/"
+        aria-label="Back to the roster"
+        className="absolute left-3 top-[5.6rem] z-10 flex h-11 items-center rounded-lg border border-line bg-ink/70 px-3 text-sm font-semibold text-fg hover:border-line-strong md:bottom-4 md:left-4 md:top-auto"
+      >
+        ← <span className="ml-1 hidden md:inline">Roster</span>
       </Link>
     </main>
   );

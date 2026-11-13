@@ -10,7 +10,19 @@ import { getClip, onClip, snapshotCard } from "@/lib/game/recorder";
 
 export const gameCanvases = () => Array.from(document.querySelectorAll<HTMLCanvasElement>("[data-game-root] canvas"));
 
-const SIDE_C = ["#f97316", "#38bdf8"] as const;
+const SIDE_C = ["#ff5a1f", "#22c7ff"] as const;
+
+/** Flat tick marks every `step` % (life / meter segments). */
+function Ticks({ step }: { step: number }) {
+  const n = Math.round(100 / step) - 1;
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} aria-hidden className="absolute inset-y-0 w-[2px] bg-ink/70" style={{ left: `${(i + 1) * step}%` }} />
+      ))}
+    </>
+  );
+}
 
 /** Screenpack-style lifebar: portrait, slanted bar with lagging damage layer, name plate. */
 function HealthBar({ idx }: { idx: 0 | 1 }) {
@@ -26,8 +38,8 @@ function HealthBar({ idx }: { idx: 0 | 1 }) {
   return (
     <div className={`flex min-w-0 flex-1 items-start gap-1.5 md:gap-2 ${right ? "flex-row-reverse" : ""}`} data-lifebar={idx}>
       <div
-        className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 bg-black/60 md:h-14 md:w-14"
-        style={{ borderColor: SIDE_C[idx], background: `radial-gradient(circle at 50% 70%, ${f?.color ?? "#333"}66, #0d0b09)` }}
+        className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 bg-panel-2 md:h-14 md:w-14"
+        style={{ borderColor: SIDE_C[idx] }}
       >
         {face && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -37,22 +49,22 @@ function HealthBar({ idx }: { idx: 0 | 1 }) {
       <div className={`flex min-w-0 flex-1 flex-col gap-1 ${right ? "items-end" : "items-start"}`}>
         <div
           key={shaking ? lastHit.id : "still"}
-          className={`relative h-4 w-full overflow-hidden border border-black/80 bg-black/70 shadow-[0_2px_0_rgba(0,0,0,0.5)] md:h-6 ${right ? "-scale-x-100" : ""} ${shaking ? "animate-[barshake_0.3s_ease-out]" : ""}`}
+          className={`relative h-5 w-full overflow-hidden border-2 border-ink bg-ink/85 shadow-[0_2px_0_rgba(0,0,0,0.6)] md:h-7 ${right ? "-scale-x-100" : ""} ${shaking ? "animate-[barshake_0.3s_ease-out]" : ""}`}
           style={{ clipPath: "polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%)" }}
         >
-          <div className="absolute inset-y-0 left-0 bg-white/80 transition-[width] duration-[900ms] ease-in" style={{ width: `${hp}%` }} />
-          <div className="absolute inset-y-0 left-0 bg-red-600 transition-[width] delay-150 duration-700 ease-out" style={{ width: `${hp}%` }} />
+          {/* lagging damage layer (white), then the solid life fill: gold, red when low */}
+          <div className="absolute inset-y-0 left-0 bg-fg transition-[width] delay-150 duration-700 ease-out" style={{ width: `${hp}%` }} />
           <div
-            className={`absolute inset-y-0 left-0 transition-[width] duration-100 ${low ? "animate-[lowhp_0.6s_ease-in-out_infinite]" : ""}`}
-            style={{ width: `${hp}%`, background: low ? "linear-gradient(180deg,#fca5a5,#dc2626 60%,#7f1d1d)" : "linear-gradient(180deg,#fef08a,#facc15 45%,#ea580c)" }}
+            className={`absolute inset-y-0 left-0 transition-[width] duration-100 ${low ? "bg-danger animate-[lowhp_0.6s_ease-in-out_infinite]" : "bg-gold"}`}
+            style={{ width: `${hp}%` }}
           />
-          <div className="absolute inset-x-0 top-0 h-1/3 bg-white/25" />
+          <Ticks step={10} />
         </div>
         <div className={`flex max-w-full items-center gap-1.5 ${right ? "flex-row-reverse" : ""}`}>
-          <span className="rounded px-1 font-arcade text-[9px] leading-tight text-black md:text-[10px]" style={{ background: SIDE_C[idx] }}>
+          <span className="tag px-1 text-[10px] md:text-xs" style={{ background: SIDE_C[idx] }}>
             {tag}
           </span>
-          <span className="truncate font-arcade text-[11px] uppercase leading-tight text-white text-stroke md:text-sm">{f?.name}</span>
+          <span className="truncate font-arcade text-xs uppercase leading-tight text-fg text-stroke [text-shadow:0_1px_0_#000] md:text-base">{f?.name}</span>
         </div>
       </div>
     </div>
@@ -69,7 +81,7 @@ function Timer() {
   const urgent = mode !== "practice" && t <= 10;
   return (
     <div
-      className={`flex h-11 w-12 shrink-0 items-center justify-center rounded-lg border-2 bg-black/70 font-arcade text-2xl tabular-nums md:h-14 md:w-16 md:text-3xl ${urgent ? "animate-pulse border-red-500 text-red-400" : "border-white/20 text-white"}`}
+      className={`flex h-12 w-14 shrink-0 items-center justify-center rounded-lg border-2 bg-ink font-arcade text-2xl tabular-nums md:h-14 md:w-16 md:text-3xl ${urgent ? "animate-pulse border-danger text-danger" : "border-line-strong text-fg"}`}
       data-timer
     >
       {mode === "practice" ? "∞" : Math.max(0, t)}
@@ -115,13 +127,11 @@ function MeterBar({ idx, value }: { idx: 0 | 1; value: number }) {
   const right = idx === 1;
   return (
     <div className={`flex items-center gap-1 ${right ? "flex-row-reverse" : ""}`} data-meter={idx} data-meter-value={value}>
-      <div className={`relative h-2 w-24 overflow-hidden rounded-sm border border-black/70 bg-black/70 md:h-2.5 md:w-40 ${right ? "-scale-x-100" : ""}`}>
-        <div
-          className={`absolute inset-y-0 left-0 transition-[width] duration-150 ${full ? "animate-pulse" : ""}`}
-          style={{ width: `${value}%`, background: full ? "linear-gradient(90deg,#22d3ee,#e879f9,#facc15)" : "linear-gradient(90deg,#0ea5e9,#22d3ee)" }}
-        />
+      <div className={`relative h-3 w-28 overflow-hidden rounded-sm border-2 border-ink bg-ink/85 md:h-3.5 md:w-44 ${right ? "-scale-x-100" : ""}`}>
+        <div className={`absolute inset-y-0 left-0 transition-[width] duration-150 ${full ? "animate-pulse bg-gold" : "bg-volt"}`} style={{ width: `${value}%` }} />
+        <Ticks step={25} />
       </div>
-      <span className={`font-arcade text-[8px] leading-none md:text-[10px] ${full ? "text-yellow-300 drop-shadow-[0_0_6px_rgba(250,204,21,0.9)]" : "text-cyan-200/60"}`}>
+      <span className={`font-arcade text-[10px] leading-none [text-shadow:0_1px_0_#000] md:text-xs ${full ? "text-gold" : "text-volt"}`}>
         {full ? "SUPER" : "METER"}
       </span>
     </div>
@@ -141,7 +151,7 @@ function Callout() {
   const show = c && c.id !== hidden ? c : null;
   if (!show) return null;
   const sup = show.kind === "super";
-  const color = show.kind === "parry" ? "#e0f2fe" : sup ? "#facc15" : show.kind === "special" ? fighters?.[show.who].color ?? "#f97316" : "#fde68a";
+  const color = show.kind === "parry" ? "#f5f5f7" : sup ? "#ffd23f" : show.kind === "special" ? fighters?.[show.who].color ?? "#ff5a1f" : "#ffd23f";
   return (
     <>
       {sup && <div key={`f${show.id}`} className="pointer-events-none absolute inset-0 bg-white animate-[superflash_0.45s_ease-out_forwards]" data-super-flash />}
@@ -156,7 +166,7 @@ function Callout() {
         >
           {show.text}
         </div>
-        {sup && fighters && <div className="mt-1 font-display text-sm uppercase tracking-[0.3em] text-white/90">{fighters[show.who].name}</div>}
+        {sup && fighters && <div className="mt-1 font-display text-sm uppercase tracking-[0.3em] text-fg [text-shadow:0_2px_0_#000]">{fighters[show.who].name}</div>}
       </div>
     </>
   );
@@ -180,7 +190,7 @@ function VsSplash() {
   const tags = ["1P", mode === "2p" ? "2P" : "CPU"];
   return (
     <div
-      className="pointer-events-auto absolute inset-0 z-20 overflow-hidden bg-[#0d0b09]"
+      className="pointer-events-auto absolute inset-0 z-20 overflow-hidden bg-ink"
       onClick={() => phase === "vs" && setPhase("intro")}
       data-vs-splash
     >
@@ -190,11 +200,10 @@ function VsSplash() {
           className="absolute inset-0"
           style={{
             clipPath: i === 0 ? "polygon(0 0, 100% 0, 100% 38%, 0 62%)" : "polygon(0 62%, 100% 38%, 100% 100%, 0 100%)",
-            background: `linear-gradient(${i === 0 ? 135 : 315}deg, ${SIDE_C[i]}d0, ${f.color}40 50%, #0d0b09 85%)`,
+            background: SIDE_C[i],
+            opacity: 0.9,
           }}
-        >
-          <div className="absolute inset-0 opacity-20 [background:repeating-linear-gradient(-60deg,transparent_0_14px,rgba(255,255,255,0.35)_14px_16px)] animate-[stripes_0.8s_linear_infinite]" />
-        </div>
+        />
       ))}
       {fighters.map((f, i) => {
         const img = f.posterUrl ?? f.thumbUrl;
@@ -209,20 +218,20 @@ function VsSplash() {
           >
             <div
               className="relative aspect-[4/5] w-full overflow-hidden rounded-xl border-4 shadow-[0_14px_40px_rgba(0,0,0,0.6)]"
-              style={{ borderColor: SIDE_C[i], transform: `rotate(${left ? -4 : 4}deg) skewX(10deg)`, background: `radial-gradient(circle at 50% 70%, ${f.color}66, #120e0b 75%)` }}
+              style={{ borderColor: "#0b0b0e", transform: `rotate(${left ? -4 : 4}deg) skewX(10deg)`, background: "#1e1e27", boxShadow: "8px 8px 0 #0b0b0e" }}
             >
               {img && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={img} alt="" className={`h-full w-full object-cover ${left ? "" : "-scale-x-100"}`} />
               )}
-              {f.posterUrl && <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[8px] uppercase tracking-wider text-white/80">RenderCloud</span>}
+              {f.posterUrl && <span className="absolute bottom-1 left-1 rounded bg-ink px-1 text-[9px] font-bold uppercase tracking-wider text-gold">Aholo RenderCloud</span>}
             </div>
             <div className={`flex flex-col ${left ? "items-start pl-3" : "items-end pr-3 text-right"}`} style={{ transform: "skewX(10deg)" }}>
-              <span className="px-2 font-arcade text-xs text-black md:text-sm" style={{ background: SIDE_C[i] }}>
+              <span className="bg-ink px-2 font-arcade text-xs md:text-sm" style={{ color: SIDE_C[i] }}>
                 {tags[i]}
               </span>
-              <span className="font-arcade text-2xl leading-none text-white text-stroke drop-shadow-[0_4px_0_rgba(0,0,0,0.6)] md:text-4xl">{f.name}</span>
-              <span className="mt-1 px-2 text-[9px] uppercase tracking-wider text-white/70 md:text-[11px]" data-aholo-tag>
+              <span className="font-arcade text-2xl leading-none text-fg text-stroke [text-shadow:0_4px_0_#000] md:text-4xl">{f.name}</span>
+              <span className="mt-1 bg-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold md:text-xs" data-aholo-tag>
                 {aholoTag(f)}
               </span>
             </div>
@@ -230,13 +239,13 @@ function VsSplash() {
         );
       })}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="font-arcade text-[6.5rem] leading-none text-orange-400 text-stroke drop-shadow-[0_0_40px_rgba(242,127,13,0.9)] animate-[vsslam_0.5s_0.35s_ease-out_both] md:text-[11rem]">
+        <div className="font-arcade text-[6.5rem] leading-none text-gold text-stroke [text-shadow:0_8px_0_#000] animate-[vsslam_0.5s_0.35s_ease-out_both] md:text-[11rem]">
           VS
         </div>
       </div>
       <div className="absolute inset-x-0 bottom-3 flex flex-col items-center gap-0.5 pb-[env(safe-area-inset-bottom)] text-center">
-        <div className="font-arcade text-xs tracking-widest text-orange-100/80 md:text-sm">Stage · {arena.name ?? "Neon Ring"}</div>
-        <div className="text-[10px] text-white/50">tap to skip</div>
+        <div className="rounded bg-ink px-2 py-1 font-arcade text-xs tracking-widest text-fg md:text-sm">Stage · {arena.name ?? "Neon Ring"}</div>
+        <div className="rounded bg-ink px-2 py-0.5 text-xs text-fg">tap to skip</div>
       </div>
     </div>
   );
@@ -247,11 +256,11 @@ function HitCallout() {
   if (!show) return null;
   return (
     <>
-      {show.heavy && !show.blocked && <div key={`f${show.id}`} className="pointer-events-none absolute inset-0 animate-[flash_0.25s_ease-out_forwards] bg-orange-200/30" />}
+      {show.heavy && !show.blocked && <div key={`f${show.id}`} className="pointer-events-none absolute inset-0 animate-[flash_0.25s_ease-out_forwards] bg-fg/20" />}
       <div
         key={show.id}
-        className={`pointer-events-none absolute top-[28%] font-display text-2xl font-black uppercase italic drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] animate-[popfade_0.6s_ease-out_forwards] md:text-3xl ${
-          show.who === 1 ? "right-[18%] text-orange-400" : "left-[18%] text-sky-300"
+        className={`pointer-events-none absolute top-[28%] font-display text-2xl font-black uppercase italic [text-shadow:0_3px_0_#000] animate-[popfade_0.6s_ease-out_forwards] md:text-3xl ${
+          show.who === 1 ? "right-[18%] text-blaze" : "left-[18%] text-volt"
         }`}
       >
         {show.blocked ? "Blocked" : show.heavy ? `Smash! -${show.dmg}` : `-${show.dmg}`}
@@ -266,7 +275,7 @@ function ComboCounter() {
   return (
     <div
       key={combo.id}
-      className={`pointer-events-none absolute top-[40%] font-display font-black italic text-yellow-300 drop-shadow-[0_0_14px_rgba(250,204,21,0.7)] animate-[pop_0.25s_ease-out] ${combo.who === 0 ? "left-[8%]" : "right-[8%]"}`}
+      className={`pointer-events-none absolute top-[40%] font-display font-black italic text-gold [text-shadow:0_3px_0_#000] animate-[pop_0.25s_ease-out] ${combo.who === 0 ? "left-[8%]" : "right-[8%]"}`}
     >
       <div className="text-5xl leading-none md:text-6xl">{combo.n}</div>
       <div className="text-sm uppercase tracking-[0.3em]">hit combo</div>
@@ -307,7 +316,7 @@ function FightFlash() {
   if (!show) return null;
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <div className="font-display text-8xl font-black italic text-orange-500 drop-shadow-[0_0_40px_rgba(242,127,13,0.8)] animate-[pop_0.35s_ease-out] md:text-[10rem]">
+      <div className="font-arcade text-7xl text-blaze text-stroke [text-shadow:0_6px_0_#000] animate-[pop_0.35s_ease-out] md:text-[9rem]">
         FIGHT!
       </div>
     </div>
@@ -322,7 +331,7 @@ function ShareButtons({ posterUrl }: { posterUrl?: string }) {
   const winner = useGame((s) => s.winner);
   const makeCard = async () => setCard(await snapshotCard(gameCanvases(), posterUrl));
   const shareText = fighters && winner !== null ? `${fighters[winner].name} just KO'd ${fighters[winner === 0 ? 1 : 0].name} in Anything Fighter. Every fighter was forged from a photo with Aholo Lux3D. #Manycorehackathon` : "";
-  const btn = "rounded-xl border border-orange-300/30 px-4 py-2 font-display text-sm text-orange-50 hover:bg-white/5";
+  const btn = "btn btn-ghost btn-sm";
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       <button onClick={makeCard} className={btn} data-action="ko-card">
@@ -333,7 +342,7 @@ function ShareButtons({ posterUrl }: { posterUrl?: string }) {
           🎬 Save clip (.{clip.ext})
         </a>
       ) : (
-        <span className="text-xs text-orange-200/50">recording clip…</span>
+        <span className="text-xs text-muted">recording clip…</span>
       )}
       <button onClick={() => navigator.clipboard?.writeText(shareText)} className={btn} title="Copy a post caption (nothing is posted)">
         📋 Copy caption
@@ -342,9 +351,9 @@ function ShareButtons({ posterUrl }: { posterUrl?: string }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6" onClick={() => setCard(null)}>
           <div className="flex max-w-4xl flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={card} alt="KO card" className="max-h-[70vh] rounded-xl border border-orange-300/20" />
+            <img src={card} alt="KO card" className="max-h-[70vh] rounded-xl border border-line" />
             <div className="flex gap-2">
-              <a href={card} download="anything-fighter-ko-card.png" className="rounded-xl bg-orange-500 px-5 py-2 font-display font-bold text-black">
+              <a href={card} download="anything-fighter-ko-card.png" className="btn btn-primary">
                 Download PNG
               </a>
               <button onClick={() => setCard(null)} className={btn}>
@@ -371,7 +380,7 @@ function Banner() {
   if (phase === "intro") {
     return (
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-        <div className="font-arcade text-6xl text-orange-400 text-stroke drop-shadow-[0_0_30px_rgba(242,127,13,0.6)] md:text-8xl">
+        <div className="font-arcade text-6xl text-gold text-stroke [text-shadow:0_6px_0_#000] md:text-8xl">
           <Countdown />
         </div>
       </div>
@@ -381,8 +390,8 @@ function Banner() {
   if (phase === "ko") {
     return (
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center" data-ko>
-        <div className="absolute inset-x-0 top-1/2 h-28 -translate-y-1/2 -skew-y-3 bg-black/70 opacity-90 [background-image:repeating-linear-gradient(-60deg,transparent_0_18px,rgba(242,127,13,0.25)_18px_22px)] animate-[stripes_0.6s_linear_infinite] md:h-40" />
-        <div className="relative font-arcade text-[6.5rem] leading-none text-red-500 text-stroke drop-shadow-[0_0_40px_rgba(239,68,68,0.8)] animate-[kostamp_0.45s_ease-out_both] md:text-[10rem]">
+        <div className="absolute inset-x-0 top-1/2 h-28 -translate-y-1/2 -skew-y-3 border-y-4 border-gold bg-ink/85 md:h-40" />
+        <div className="relative font-arcade text-[6.5rem] leading-none text-danger text-stroke [text-shadow:0_8px_0_#000] animate-[kostamp_0.45s_ease-out_both] md:text-[10rem]">
           {hp[0] > 0 && hp[1] > 0 ? "TIME!" : "K.O."}
         </div>
       </div>
@@ -392,29 +401,29 @@ function Banner() {
     const w = fighters[winner];
     const label = mode === "2p" ? `Player ${winner + 1} wins` : winner === 0 ? "You win" : "CPU wins";
     return (
-      <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-black/20 to-transparent p-3 pb-10 md:pb-16">
-        <div className="flex items-center gap-6 rounded-2xl border border-orange-300/20 bg-[#1a1511]/85 px-5 py-5 backdrop-blur md:px-8 md:py-6" data-victory>
+      <div className="absolute inset-0 flex items-end justify-center bg-ink/55 p-3 pb-[max(2.5rem,env(safe-area-inset-bottom))] md:pb-16">
+        <div className="card flex items-center gap-6 border-2 border-line-strong px-5 py-5 shadow-[0_8px_0_#000] md:px-8 md:py-6" data-victory>
           {w.posterUrl && (
             <a href={w.posterUrl} target="_blank" rel="noreferrer" title="Cloud-rendered poster (Aholo RenderCloud)" className="relative hidden shrink-0 sm:block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={w.posterUrl} alt={`${w.name} poster`} className="h-56 rounded-xl border border-orange-300/20 object-cover shadow-2xl" />
-              <span className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-orange-100/80">RenderCloud</span>
+              <img src={w.posterUrl} alt={`${w.name} poster`} className="h-56 rounded-lg border border-line object-cover" />
+              <span className="absolute bottom-1.5 left-1.5 rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold">Aholo RenderCloud</span>
             </a>
           )}
           <div className="flex flex-col items-center gap-3">
-            <div className="text-xs uppercase tracking-[0.4em] text-orange-200/70">{label}</div>
+            <div className="eyebrow text-muted">{label}</div>
             <div className="text-center font-arcade text-3xl leading-tight text-stroke md:text-5xl" style={{ color: w.color }}>
               {w.name} wins!
             </div>
-            {hp[winner] >= 100 && <div className="font-arcade text-lg text-yellow-300 animate-[pop_0.4s_ease-out]">Perfect!</div>}
-            <div className="text-sm text-orange-100/70">
+            {hp[winner] >= 100 && <div className="font-arcade text-lg text-gold animate-[pop_0.4s_ease-out]">Perfect!</div>}
+            <div className="text-sm text-muted">
               Clean hits {hits[winner]} · {fighters[winner === 0 ? 1 : 0].name} landed {hits[winner === 0 ? 1 : 0]}
             </div>
             <div className="flex gap-2">
-              <button onClick={rematch} className="h-12 rounded-xl bg-gradient-to-b from-orange-400 to-orange-600 px-6 font-arcade text-black hover:brightness-110">
+              <button onClick={rematch} className="btn btn-primary btn-lg h-12 text-base">
                 Rematch
               </button>
-              <Link href="/" className="flex h-12 items-center rounded-xl border border-white/20 px-5 font-arcade text-orange-50 hover:bg-white/5">
+              <Link href="/" className="btn btn-ghost h-12 font-arcade font-normal">
                 Roster
               </Link>
             </div>
@@ -448,9 +457,12 @@ function TouchPad({ meter }: { meter: number }) {
   });
   const full = meter >= METER_MAX;
   // Sized for 360–412 px portrait: d-pad left; right = Punch (biggest, under the thumb), Kick above, Block left of
-  // Punch, Special above Block, Super (meter ring) on top. Every target ≥ 56 px.
+  // Punch, Special above Block, Super (meter ring) on top. Every target ≥ 56 px. One flat style: translucent ink
+  // disc + solid colour-coded outline (move = white, punch = blaze, kick = volt, special / super = gold).
   const btn =
-    "pointer-events-auto absolute flex touch-none select-none items-center justify-center rounded-full border-2 border-white/25 bg-black/55 font-arcade text-[10px] leading-none text-orange-50 shadow-[inset_0_-3px_0_rgba(0,0,0,0.4)] active:scale-90 active:bg-orange-500/50";
+    "pointer-events-auto absolute flex touch-none select-none flex-col items-center justify-center gap-0.5 rounded-full border-[3px] bg-ink/55 font-arcade text-[11px] leading-none shadow-[0_3px_0_rgba(0,0,0,0.55)] active:scale-90";
+  const move = "border-fg/70 text-fg active:bg-fg active:text-ink";
+  const R = 26, C = 2 * Math.PI * R;
   return (
     <div
       className="absolute inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] flex items-end justify-between gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] [@media(hover:hover)]:hidden"
@@ -458,7 +470,7 @@ function TouchPad({ meter }: { meter: number }) {
     >
       <div className="grid grid-cols-2 gap-2">
         <button
-          className={`${btn} !relative h-14 w-16 flex-col gap-0.5 border-lime-300/50 text-[8px]`}
+          className={`${btn} ${move} !relative h-16 w-16`}
           aria-label="Jump"
           data-btn="jump"
           onPointerDown={(e) => {
@@ -467,30 +479,36 @@ function TouchPad({ meter }: { meter: number }) {
             navigator.vibrate?.(6);
           }}
         >
-          <span className="text-base leading-none">▲</span>Jump
+          <span className="text-lg leading-none" aria-hidden>▲</span>
+          <span className="text-[9px]">Jump</span>
         </button>
-        <button className={`${btn} !relative h-14 w-16 flex-col gap-0.5 border-violet-300/50 text-[8px]`} aria-label="Crouch" data-btn="crouch" {...hold("down")}>
-          <span className="text-base leading-none">▼</span>Crouch
+        <button className={`${btn} ${move} !relative h-16 w-16`} aria-label="Crouch" data-btn="crouch" {...hold("down")}>
+          <span className="text-lg leading-none" aria-hidden>▼</span>
+          <span className="text-[9px]">Crouch</span>
         </button>
-        <button className={`${btn} !relative h-16 w-16 text-base`} aria-label="Move left" {...hold("left")}>◀</button>
-        <button className={`${btn} !relative h-16 w-16 text-base`} aria-label="Move right" {...hold("right")}>▶</button>
+        <button className={`${btn} ${move} !relative h-16 w-16 text-xl`} aria-label="Move left" {...hold("left")}>◀</button>
+        <button className={`${btn} ${move} !relative h-16 w-16 text-xl`} aria-label="Move right" {...hold("right")}>▶</button>
       </div>
       <div className="relative h-[13.5rem] w-[11.5rem] shrink-0">
         <button
-          className={`${btn} right-[4.6rem] top-0 h-14 w-14 !border-0 p-[3px]`}
-          style={{ background: `conic-gradient(${full ? "#facc15" : "#22d3ee"} ${meter * 3.6}deg, rgba(255,255,255,0.12) 0)` }}
-          aria-label="Super"
+          className={`${btn} right-[4.6rem] top-0 h-14 w-14 !border-0 ${full ? "!bg-gold text-ink animate-pulse" : "text-gold"}`}
+          aria-label={full ? "Super (ready)" : `Super (meter ${Math.round(meter)}%)`}
           data-btn="super"
           {...tap("super")}
         >
-          <span className={`flex h-full w-full items-center justify-center rounded-full ${full ? "bg-yellow-400/90 text-black animate-pulse" : "bg-black/80 text-cyan-100/70"}`}>Super</span>
+          {/* meter ring: a solid stroke whose dash length is the meter (flat stroke, no conic fill) */}
+          <svg viewBox="0 0 60 60" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
+            <circle cx="30" cy="30" r={R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="5" />
+            <circle cx="30" cy="30" r={R} fill="none" stroke="#ffd23f" strokeWidth="5" strokeDasharray={`${(C * Math.min(meter, METER_MAX)) / METER_MAX} ${C}`} />
+          </svg>
+          <span className="relative">Super</span>
         </button>
-        <button className={`${btn} left-0 top-[4.1rem] h-14 w-14 border-fuchsia-400/60 bg-fuchsia-500/25 text-[9px]`} aria-label="Special" data-btn="special" {...tap("special")}>
+        <button className={`${btn} left-0 top-[4.1rem] h-14 w-14 border-gold text-[10px] text-gold active:bg-gold active:text-ink`} aria-label="Special" data-btn="special" {...tap("special")}>
           Special
         </button>
-        <button className={`${btn} right-0 top-[3.6rem] h-16 w-16 border-sky-400/60 bg-sky-500/25`} data-btn="kick" {...tap("kick")}>Kick</button>
-        <button className={`${btn} bottom-0 left-0 h-16 w-16`} data-btn="block" {...hold("block")}>Block</button>
-        <button className={`${btn} bottom-0 right-0 h-[5.25rem] w-[5.25rem] border-orange-400/70 bg-orange-500/35 text-[12px]`} data-btn="punch" {...tap("punch")}>Punch</button>
+        <button className={`${btn} right-0 top-[3.6rem] h-16 w-16 border-volt bg-volt/20 text-volt active:bg-volt active:text-ink`} data-btn="kick" {...tap("kick")}>Kick</button>
+        <button className={`${btn} ${move} bottom-0 left-0 h-16 w-16`} data-btn="block" {...hold("block")}>Block</button>
+        <button className={`${btn} bottom-0 right-0 h-[5.25rem] w-[5.25rem] border-blaze bg-blaze/30 text-[13px] text-fg active:bg-blaze active:text-ink`} data-btn="punch" {...tap("punch")}>Punch</button>
       </div>
     </div>
   );
@@ -506,14 +524,14 @@ function ComboHint({ touch }: { touch: boolean }) {
   if (!on) return null;
   return (
     <div
-      className={`pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-lg bg-black/55 px-3 py-1.5 text-center text-[11px] leading-snug text-orange-100/85 transition-opacity [@media(hover:hover)]:hidden ${touch ? "bottom-[15.5rem]" : "bottom-16"}`}
+      className={`pointer-events-none absolute left-1/2 w-max max-w-[92vw] -translate-x-1/2 rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-center text-xs leading-snug text-fg transition-opacity [@media(hover:hover)]:hidden ${touch ? "bottom-[15.5rem]" : "bottom-16"}`}
       data-combo-hint
     >
-      <b className="text-orange-300">Punch Punch Kick</b> · <b className="text-sky-300">Kick Punch</b> · <b className="text-fuchsia-300">◀▶+Punch</b> = Special
+      <b className="text-blaze">Punch Punch Kick</b> · <b className="text-volt">Kick Punch</b> · <b className="text-gold">◀▶+Punch</b> = Special
       <br />
-      <b className="text-lime-300">Jump</b> over lows, hit in the air · <b className="text-violet-300">Crouch</b> under jabs, Crouch+Kick sweeps
+      <b>Jump</b> over lows, hit in the air · <b>Crouch</b> under jabs, Crouch+Kick sweeps
       <br />
-      Fill the meter, then <b className="text-yellow-300">SUPER</b> · tap Block just before a hit to parry
+      Fill the meter, then <b className="text-gold">SUPER</b> · tap Block just before a hit to parry
     </div>
   );
 }
@@ -526,8 +544,9 @@ function MuteButton() {
         setMuted(!m);
         setM(!m);
       }}
-      className="pointer-events-auto absolute right-3 top-[4.6rem] rounded-lg bg-black/40 px-2 py-1 text-sm text-orange-100/70 hover:text-orange-50 md:top-20"
+      className="pointer-events-auto absolute right-3 top-[5.6rem] flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-ink/70 text-base text-fg md:top-24"
       title={m ? "Unmute" : "Mute"}
+      aria-label={m ? "Unmute" : "Mute"}
       data-action="mute"
     >
       {m ? "🔇" : "🔊"}
@@ -576,10 +595,10 @@ export function Hud() {
         <Banner />
       </div>
       {phase === "fight" && (
-        <div className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 flex-wrap justify-center gap-x-4 gap-y-1 rounded-xl bg-black/40 px-4 py-2 text-xs text-orange-100/70 [@media(hover:hover)]:flex">
+        <div className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 flex-wrap justify-center gap-x-4 gap-y-1 rounded-lg border border-line bg-ink/75 px-4 py-2 text-xs text-muted [@media(hover:hover)]:flex">
           {hint.map(([k, v]) => (
             <span key={k}>
-              <b className="text-orange-300">{k}</b> {v}
+              <b className="text-gold">{k}</b> {v}
             </span>
           ))}
         </div>

@@ -276,14 +276,14 @@ export function AholoSplatLayer({
   return (
     <div className="absolute inset-0" data-splat-state={state}>
       {state !== "ready" && (
-        <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_60%,#3a2a1a_0%,#120e0a_70%)] bg-cover bg-center"
-          style={poster ? { backgroundImage: `linear-gradient(rgba(13,11,9,.35),rgba(13,11,9,.6)), url(${poster})` } : undefined}
-        />
+        <>
+          <div className="absolute inset-0 bg-panel bg-cover bg-center" style={poster ? { backgroundImage: `url(${poster})` } : undefined} />
+          {poster && <div className="absolute inset-0 bg-ink/50" />}
+        </>
       )}
       <div ref={ref} className={`absolute inset-0 ${state === "ready" ? "" : "opacity-0"}`} />
       {state === "loading" && (
-        <div className="pointer-events-none absolute inset-x-0 top-[38%] text-center font-arcade text-sm tracking-widest text-orange-200/80 animate-pulse">
+        <div className="pointer-events-none absolute inset-x-0 top-[38%] text-center font-arcade text-sm tracking-widest text-fg [text-shadow:0_2px_0_#000] animate-pulse">
           Loading arena…
         </div>
       )}
