@@ -31,12 +31,13 @@ export interface ArenaDef {
 }
 
 export const BUILTIN_ARENAS: ArenaDef[] = [
-  { id: "stage", name: "Neon Ring", source: "builtin", note: "Built-in stage" },
+  { id: "stage", name: "Neon Ring", source: "builtin", note: "Built-in stage", cover: "/arenas/thumbs/stage.jpg" },
   {
     id: "sample-bear",
     name: "Aholo Sample Splat",
     source: "sample",
     note: "Official Aholo Viewer sample (.sog)",
+    cover: "/arenas/thumbs/sample-bear.jpg",
     splatUrl: "https://holo-cos.aholo3d.cn/aholo-opensource/gs_file/bear/bear.3d71a266.sog",
     upAxis: "-Y",
     origin: [0, 0, 0],

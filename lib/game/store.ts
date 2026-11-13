@@ -4,7 +4,8 @@ import type { FighterDef } from "../fighters";
 import type { ArenaKind } from "../fighters";
 import type { ArenaDef } from "../arenas";
 
-export type Phase = "loading" | "intro" | "fight" | "ko" | "victory";
+/** loading → vs (VS splash, skipped in practice) → intro (ROUND 1, 3-2-1) → fight → ko → victory */
+export type Phase = "loading" | "vs" | "intro" | "fight" | "ko" | "victory";
 /** cpu = 1P vs CPU · 2p = local versus · practice = CPU never attacks, HP refills (used while a fighter forges) */
 export type GameMode = "cpu" | "2p" | "practice";
 

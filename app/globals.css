@@ -3,6 +3,7 @@
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sg), var(--font-inter), sans-serif;
+  --font-arcade: var(--font-bungee), var(--font-sg), sans-serif;
 }
 
 html,
@@ -31,4 +32,51 @@ body {
   25% { transform: translateX(-4px); }
   50% { transform: translateX(3px); }
   75% { transform: translateX(-2px); }
+}
+
+/* ── arcade UI ── */
+.text-stroke { -webkit-text-stroke: 1.5px rgba(0, 0, 0, 0.85); paint-order: stroke fill; }
+.arcade-title { font-family: var(--font-arcade); letter-spacing: 0.01em; text-shadow: 0 3px 0 #7c2d12, 0 0 28px rgba(242, 127, 13, 0.45); }
+.skew-panel { transform: skewX(-10deg); }
+.skew-panel > * { transform: skewX(10deg); }
+@keyframes idlebob {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-4%) scale(0.985, 1.015); }
+}
+@keyframes cursorpulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@keyframes slidein-l {
+  0% { transform: translateX(-110%) skewX(-10deg); }
+  70% { transform: translateX(4%) skewX(-10deg); }
+  100% { transform: translateX(0) skewX(-10deg); }
+}
+@keyframes slidein-r {
+  0% { transform: translateX(110%) skewX(-10deg); }
+  70% { transform: translateX(-4%) skewX(-10deg); }
+  100% { transform: translateX(0) skewX(-10deg); }
+}
+@keyframes vsslam {
+  0% { transform: scale(4) rotate(-12deg); opacity: 0; }
+  55% { transform: scale(0.9) rotate(-6deg); opacity: 1; }
+  75% { transform: scale(1.08) rotate(-6deg); }
+  100% { transform: scale(1) rotate(-6deg); opacity: 1; }
+}
+@keyframes screenshake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 3px); }
+  40% { transform: translate(5px, -4px); }
+  60% { transform: translate(-3px, 2px); }
+  80% { transform: translate(2px, -1px); }
+}
+@keyframes kostamp {
+  0% { transform: scale(3) rotate(-8deg); opacity: 0; letter-spacing: 0.4em; }
+  60% { transform: scale(0.92) rotate(-4deg); opacity: 1; letter-spacing: 0.02em; }
+  100% { transform: scale(1) rotate(-4deg); opacity: 1; letter-spacing: 0.02em; }
+}
+@keyframes stripes { to { background-position: 40px 0; } }
+@keyframes lowhp { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.6); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }

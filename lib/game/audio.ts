@@ -75,7 +75,7 @@ function tone(t: number, dur: number, f0: number, f1: number, gain: number, type
   o.stop(t + dur + 0.02);
 }
 
-export type Sfx = "whoosh" | "punch" | "kick" | "block" | "ko" | "ready" | "fight" | "victory" | "click";
+export type Sfx = "whoosh" | "punch" | "kick" | "block" | "ko" | "ready" | "fight" | "victory" | "click" | "vs";
 export function sfx(kind: Sfx, intensity = 1) {
   const c = ac();
   if (!c || muted) return;
@@ -112,6 +112,11 @@ export function sfx(kind: Sfx, intensity = 1) {
       break;
     case "victory":
       [392, 523, 659, 784, 1046].forEach((f, i) => tone(t + i * 0.11, 0.5, f, f * 1.01, 0.2, "triangle"));
+      break;
+    case "vs":
+      noise(t, 0.35, 600, 0.7, 0.5, "lowpass");
+      tone(t, 0.6, 110, 40, 1.0);
+      [196, 294, 392].forEach((f) => tone(t + 0.02, 0.5, f, f * 0.98, 0.12, "sawtooth"));
       break;
     case "click":
       tone(t, 0.04, 1800, 1200, 0.12, "square");

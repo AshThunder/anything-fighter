@@ -137,12 +137,12 @@ After a fight: rematch, **KO card** (1600×900 PNG with the RenderCloud poster) 
 
 | Path | What |
 |---|---|
-| `app/page.tsx` → `components/landing/Landing.tsx` | Landing: photo upload / “snap a photo” (`capture=environment`), live pipeline stage cards, roster (click = P1, shift/right-click = CPU or P2), 1P/2P toggle, versus 3D preview, arena picker |
+| `app/page.tsx` → `components/landing/Landing.tsx` | Mobile-first arcade home: forge panel (snap/upload, "Powered by Aholo" strip), `SelectScreen` (3D idle versus preview + portrait grid with 1P / CPU cursors, arrow-key navigation), `ArenaPicker` stage select (real preview thumbnails, queued SpatialGen/Reality worlds behind a "Coming soon" toggle with the room-scan builder), sticky 1P/2P + FIGHT bar |
 | `app/forge/[id]/*` | Live forge page: photo/concept previews, per-stage ETA, auto-retry of transient errors + Retry button, "practice while you wait" sparring |
 | `app/gallery/*` | Every forged fighter: photo → Lux3D concept → RenderCloud poster, 3D turntable, Fight button |
 | `lib/world.ts`, `lib/arenas*.ts`, `app/api/arenas*`, `app/api/room` | SpatialGen / Reality job state machines, arena registry (stage, generated worlds, room scans) |
 | `lib/game/audio.ts`, `lib/game/recorder.ts` | WebAudio synth SFX + music; canvas clip recorder and KO card compositor |
-| `app/fight/*`, `components/game/*` | 1v1 fight: `GameScene` (one R3F Canvas, one `useFrame` sim loop), `Fighter` (rigged GLB + clips + procedural layer), `Effects` (hit sparks, camera rig/shake), `Hud` (HTML overlay: HP, timer, callouts, KO/victory, touch pad) |
+| `app/fight/*`, `components/game/*` | 1v1 fight: `GameScene` (one R3F Canvas, one `useFrame` sim loop), `Fighter` (rigged GLB + clips + procedural layer), `Effects` (hit sparks, camera rig/shake), `Hud` (HTML overlay: VS splash with RenderCloud posters, screenpack-style lifebars with portraits and lagging damage layer, round timer, combo/hit callouts, screen shake, K.O./TIME banner, victory panel, touch pad) |
 | `lib/game/sim.ts` | Pure mutable simulation (moves, hitboxes, block, hitstun, knockback, hit-stop, slow-mo). React state only changes on hit/phase events (r3f-best-practices) |
 | `lib/game/ai.ts`, `input.ts`, `store.ts` | CPU opponent, keyboard/touch input, Zustand store (phase, HP, winner) |
 | `components/arena/Arena.tsx` | Arena abstraction: `stage` (neon ring), `pano` (SpatialGen panorama → equirect), `splat` (Aholo Viewer layer + shadow catcher) |

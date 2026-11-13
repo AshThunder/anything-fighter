@@ -1,7 +1,7 @@
 "use client";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, useGLTF } from "@react-three/drei";
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import type { FighterDef } from "@/lib/fighters";
@@ -36,9 +36,23 @@ function Model({ def, x, dir, spin = false }: { def: FighterDef; x: number; dir:
   );
 }
 
+/** Keep both fighters in frame on tall/narrow (phone) canvases: back the camera off as the aspect shrinks. */
+function FitCamera({ solo }: { solo: boolean }) {
+  const camera = useThree((s) => s.camera);
+  const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
+  const want = solo ? 0.75 : 1.25;
+  useLayoutEffect(() => {
+    const z = 4.6 * Math.max(1, want / aspect);
+    camera.position.set(0, 1.15 + (z - 4.6) * 0.06, z);
+    camera.lookAt(0, 0.9, 0);
+  }, [camera, aspect, want]);
+  return null;
+}
+
 export default function VersusPreview({ a, b, solo = false }: { a?: FighterDef; b?: FighterDef; solo?: boolean }) {
   return (
     <Canvas dpr={[1, 2]} camera={{ position: [0, 1.3, 4.6], fov: 38 }} gl={{ antialias: true, alpha: true }}>
+      <FitCamera solo={solo} />
       <StudioEnv />
       <hemisphereLight args={["#ffe8cc", "#1a1410", 1.1]} />
       <directionalLight position={[2, 5, 3]} intensity={2} />
