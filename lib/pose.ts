@@ -46,7 +46,13 @@ const baked: Node[] = [];
 for (const node of root.listNodes()) {
   const skin = node.getSkin();
   const mesh = node.getMesh();
-  if (!skin || !mesh) continue;
+  if (!mesh) continue;
+  if (!skin) {
+    // Unrigged mesh (e.g. a Lux3D mesh the auto-rig refused): keep it as-is, only normalised below.
+    baked.push(doc.createNode(node.getName() || "static").setMesh(mesh));
+    node.setMesh(null);
+    continue;
+  }
   const joints = skin.listJoints();
   const ibm = skin.getInverseBindMatrices()!;
   const jm = joints.map((j, i) => mul(j.getWorldMatrix() as M, Array.from(ibm.getElement(i, []))));
