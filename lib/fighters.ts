@@ -22,6 +22,33 @@ export interface FighterDef {
   /** Optional printable export links (STL / 3MF / USDZ). */
   exports?: Record<string, string>;
   createdAt?: number;
+  /** Aholo / Manycore services that actually produced this fighter (AholoServiceKey[]). */
+  services?: AholoServiceKey[];
+}
+
+/** Manycore stack: every Aholo service the forge can use, with the official SDK / API it goes through. */
+export const AHOLO_SERVICES = {
+  asset: { label: "Asset upload", via: "@manycore/aholo-sdk-asset" },
+  concept: { label: "Lux3D multimodal→image", via: "@manycore/aholo-sdk-lux3d" },
+  mesh: { label: "Lux3D image→3D", via: "@manycore/aholo-sdk-lux3d" },
+  rig: { label: "Lux3D auto-rig", via: "@manycore/aholo-sdk-lux3d" },
+  retarget: { label: "Lux3D retarget", via: "@manycore/aholo-sdk-lux3d" },
+  poster: { label: "RenderCloud", via: "RenderCloud OpenAPI" },
+  export: { label: "Lux3D multi-format export", via: "@manycore/aholo-sdk-lux3d" },
+} as const;
+export type AholoServiceKey = keyof typeof AHOLO_SERVICES;
+
+/** Services used for a fighter: explicit list from the forge job, else inferred from its artefacts. */
+export function fighterServices(f: FighterDef): AholoServiceKey[] {
+  if (f.services?.length) return f.services;
+  if (f.source !== "lux3d") return [];
+  const s: AholoServiceKey[] = ["asset"];
+  if (f.thumbUrl && /mascot|concept/i.test(f.thumbUrl)) s.push("concept");
+  s.push("mesh");
+  if (f.animUrls && Object.keys(f.animUrls).length) s.push("rig", "retarget");
+  if (f.posterUrl) s.push("poster");
+  if (f.exports && Object.keys(f.exports).length) s.push("export");
+  return s;
 }
 
 /** Free rigged placeholders from three.js examples (MIT), stored in public/fighters/<id>/model.glb. */

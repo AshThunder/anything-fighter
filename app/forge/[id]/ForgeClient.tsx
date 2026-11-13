@@ -5,6 +5,8 @@
  */
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { PoweredBy } from "@/components/ui/PoweredBy";
+import type { AholoServiceKey } from "@/lib/fighters";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Hud } from "@/components/game/Hud";
@@ -15,6 +17,17 @@ import { BUILTIN_ARENAS } from "@/lib/arenas";
 const GameScene = dynamic(() => import("@/components/game/GameScene"), { ssr: false });
 
 type Stage = "upload" | "mascot" | "mesh" | "rig" | "retarget" | "poster" | "export" | "done";
+const STAGE_SERVICE: Record<Stage, AholoServiceKey> = {
+  done: "retarget",
+  upload: "asset",
+  mascot: "concept",
+  mesh: "mesh",
+  rig: "rig",
+  retarget: "retarget",
+  poster: "poster",
+  export: "export",
+};
+
 const STAGES: { key: Stage; label: string; tool: string; eta: number }[] = [
   { key: "upload", label: "Photo upload", tool: "Aholo Asset (OUS)", eta: 5 },
   { key: "mascot", label: "Fighter concept", tool: "Lux3D multimodal image", eta: 40 },
@@ -250,6 +263,15 @@ export default function ForgeClient() {
                 );
               })}
             </ol>
+            {job?.mode === "live" &&
+              (fighter ? (
+                <PoweredBy fighter={fighter} />
+              ) : (
+                <PoweredBy
+                  keys={stages.slice(0, Math.max(0, idx) + 1).map((s) => STAGE_SERVICE[s.key])}
+                  active={job.error ? undefined : STAGE_SERVICE[stages[idx]?.key ?? "upload"]}
+                />
+              ))}
             {job?.error && (
               <div className="flex flex-wrap items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm">
                 <span className="flex-1 text-red-300">{job.error}</span>

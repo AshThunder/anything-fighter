@@ -6,7 +6,28 @@
 > (Aholo Lux3D), brawls in an AI-generated 3D world (Aholo SpatialGen / your own room via Aholo Reality), and gets a
 > cinematic KO poster (Aholo RenderCloud).
 
-Next.js 16 (App Router, TS, Tailwind 4) · React Three Fiber + drei · Zustand · Aholo APIs (Lux3D, SpatialGen, Reality, RenderCloud, OUS upload) · Aholo Viewer (3DGS) · LuxReal (manual trailer pack).
+Next.js 16 (App Router, TS, Tailwind 4) · React Three Fiber + drei · Zustand · **Manycore Aholo official TypeScript SDKs** (Lux3D, World = SpatialGen + Reality, Asset upload) · RenderCloud OpenAPI · Aholo Viewer (3DGS) · LuxReal (manual trailer pack).
+
+## Manycore stack (official SDKs at the core)
+
+Following Manycore's guidance (`llms.txt`: *app integration code → SDK, do not hand-write HTTP*), every Aholo call the app
+makes goes through the official packages, created once in [`lib/aholo-sdk.ts`](./lib/aholo-sdk.ts) (server-only, key from
+`AHOLO_API_KEY`, global region `com` → `https://api.aholo.ai`):
+
+| Package | Used for | Calls |
+|---|---|---|
+| [`@manycore/aholo-sdk-asset`](https://labs.aholo.ai/api-docs/en/sdk/typescript) | Photo, room-scan and GLB uploads (SDK handles single/multipart OUS) | `uploadBuffer` |
+| `@manycore/aholo-sdk-lux3d` | The whole fighter forge | `multimodalToImage.create`, `imgTo3d.create`, `humanoidAutoRig.create`, `humanoidAnimationRetarget.create`, `multiFormatExport.create` (printable STL/3MF/USDZ), `tasks.retrieve` |
+| `@manycore/aholo-sdk-world` | SpatialGen arenas, Aholo Reality room scans, queue guard | `generations.create`, `reconstructions.create`, `retrieve`, `list` |
+| `@manycore/aholo-sdk-core` | Error types (`AuthenticationError`, `RateLimitError`, `BusinessError`) and the authenticated gateway transport for **RenderCloud**, which has no SDK and stays on its OpenAPI routes | `createGatewayClient().gatewayRequest` |
+| `@manycore/aholo-viewer` | 3DGS arenas rendered under the R3F canvas | `components/arena/AholoSplatLayer.tsx` |
+
+Design rules kept from the REST version: the key never leaves the server; no key → **mock mode**; the per-IP/global
+**spend guard** (`lib/forge-limit.ts`); and the **poll-driven state machine**: each request does one SDK `create` or one
+`tasks.retrieve` / `world.retrieve`, never a long blocking `waitFor` inside a serverless function. SDK errors are mapped to
+app errors (429 / 5xx / network = transient, retried on the next poll). The in-app **"Powered by Aholo"** strip on the forge
+page and every gallery card lists the services that actually built that fighter. (The one-off scripts in `scripts/` predate
+the SDK migration and still call the REST API directly; they are not part of the deployed app.)
 
 ## Architecture — every Aholo tool and how it is used
 
@@ -45,15 +66,15 @@ flowchart LR
 
 | Aholo tool | Endpoint(s) | Used for | Code |
 |---|---|---|---|
-| OUS asset upload | `/ous/api/v2/upload/token`, `block/upload/init|part`, `upload/status` | Uploading the user photo, room-scan video and GLBs (multipart > 1 MB, dedup aware) | `lib/aholo.ts uploadAsset`, `scripts/aholo-cli.mjs upload` |
-| Lux3D multimodal image | `/global/lux3d/v1/multimodal-to-image` | Turns any object photo into a full-body humanoid "mascot" concept (so it can be rigged) | `lib/aholo.ts`, `scripts/forge-fighter.mjs` |
+| OUS asset upload | `/ous/api/v2/upload/token`, `block/upload/init|part`, `upload/status` | Uploading the user photo, room-scan video and GLBs (multipart > 1 MB, dedup aware) | `lib/aholo-sdk.ts uploadAsset` (aholo-sdk-asset) |
+| Lux3D multimodal image | `/global/lux3d/v1/multimodal-to-image` | Turns any object photo into a full-body humanoid "mascot" concept (so it can be rigged) | `lib/aholo.ts` via aholo-sdk-lux3d |
 | Lux3D image → 3D | `/global/lux3d/v1/img-to-3d` (G1-Turbo, PBR) | Concept → textured mesh | same |
 | Lux3D auto-rig | humanoid rig task | Mixamo-named 52-joint skeleton | same |
 | Lux3D retarget | retarget task, 10 presets | idle, walk, jab, cross, hook (kick), block, hit ×2, KO, victory dance | `lib/moves.ts` |
-| SpatialGen | `/global/world/v1/generations`, `/global/world/v1/{id}` | Text → 3D Gaussian-splat arenas + panoramas (kitchen colosseum, toy shop, rooftop dojo) | `scripts/gen-worlds.mjs`, `lib/world.ts`, `POST /api/arenas` |
-| Reality | `/global/world/v1/reconstructions` | "Fight in your room": phone video → splat arena | `scripts/reconstruct-room.mjs`, `components/landing/RoomScan.tsx`, `POST /api/room` |
+| SpatialGen | `/global/world/v1/generations`, `/global/world/v1/{id}` | Text → 3D Gaussian-splat arenas + panoramas (kitchen colosseum, toy shop, rooftop dojo) | `lib/world.ts` via aholo-sdk-world, `POST /api/arenas` |
+| Reality | `/global/world/v1/reconstructions` | "Fight in your room": phone video → splat arena | `lib/world.ts` via aholo-sdk-world, `components/landing/RoomScan.tsx`, `POST /api/room` |
 | Aholo Viewer | `@manycore/aholo-viewer` (vendored to `public/vendor`) | Renders SPZ/PLY/SOG splats under the transparent R3F canvas, camera synced every frame | `components/arena/AholoSplatLayer.tsx` |
-| RenderCloud | `/global/rendercloud/v1/mesh-upload-process/task/*`, `/global/rendercloud/v1/jobs` | Path-traced KO/victory posters from a USD scene (baked pose + studio backdrop + lights) | `scripts/render-poster.mjs`, `lib/poster-usda.ts` |
+| RenderCloud | `/global/rendercloud/v1/mesh-upload-process/task/*`, `/global/rendercloud/v1/jobs` | Path-traced KO/victory posters from a USD scene (baked pose + studio backdrop + lights) | `lib/poster.ts` (OpenAPI via aholo-sdk-core gateway), `lib/poster-usda.ts` |
 | LuxReal | web app only (no API) | Optional cinematic trailer from the posed GLBs + panoramas | `luxreal/README.md`, `scripts/luxreal-pack.mjs` |
 
 ## Run

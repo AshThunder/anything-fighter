@@ -1,9 +1,11 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import type { HumanoidAnimationId, Lux3dClient } from "@manycore/aholo-sdk-lux3d";
+import { AholoError, apiKey, call, isMockMode, lux3dClient, uploadAsset } from "./aholo-sdk";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { LUX3D_ANIMATION_MAP, LUX3D_RETARGET_IDS, MOVES, type Move } from "./moves";
-import { STARTER_ROSTER_IDS, type FighterDef } from "./fighters";
+import { STARTER_ROSTER_IDS, type AholoServiceKey, type FighterDef } from "./fighters";
 import { optimizeFighterGlb, shrinkTextures, stripToAnimation, weldSimplify } from "./optimize";
 import { bakePose } from "./pose";
 import { ingestCreate, ingestGet, renderPoll, renderSubmit } from "./poster";
@@ -38,168 +40,33 @@ import {
 
 // ───────────────────────────── config ─────────────────────────────
 
-export const AHOLO_BASE = process.env.AHOLO_API_BASE ?? "https://api.aholo.ai";
-const P = "/global"; // Global region path prefix
 const MESH_VERSION = (process.env.AHOLO_MESH_VERSION ?? "G1-Turbo") as "G1" | "G1-Turbo";
 const MESH_FACES = Number(process.env.AHOLO_MESH_FACES ?? 60000); // 10k–300k; game-friendly default
 const MOCK_STAGE_MS = 2500;
 
-export function apiKey(): string | undefined {
-  const k = process.env.AHOLO_API_KEY?.trim();
-  return k ? k : undefined;
-}
-export const isMockMode = () => !apiKey();
+export { AholoError, apiKey, isMockMode, uploadAsset };
 
 /** Public URL for a rehosted file. Served through a route so files created after `next build` work. */
 export const assetUrl = (id: string, file: string) => `/api/assets/${id}/${file}`;
 
-// ───────────────────────────── low-level HTTP ─────────────────────────────
+// ───────────────────────────── Lux3D (official SDK) ─────────────────────────────
+// Thin wrappers over @manycore/aholo-sdk-lux3d resources: create returns a task id, the poll loop calls
+// tasks.retrieve once per client poll (no blocking waitFor inside a serverless request).
 
-interface Envelope<T> {
-  c?: string | null;
-  m?: string | null;
-  d?: T;
-  f?: unknown;
-}
-
-export class AholoError extends Error {
-  constructor(message: string, public code?: string, public status?: number) {
-    super(message);
-  }
-}
-
-async function aholo<T>(method: "GET" | "POST", pathname: string, body?: unknown): Promise<T> {
-  const key = apiKey();
-  if (!key) throw new AholoError("AHOLO_API_KEY is not set", "NO_KEY");
-  const res = await fetch(AHOLO_BASE + pathname, {
-    method,
-    headers: {
-      Authorization: key, // NOTE: no "Bearer" prefix per Aholo docs
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store",
-  });
-  const text = await res.text();
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new AholoError(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`, undefined, res.status);
-  }
-  if (!res.ok) {
-    const j = json as { code?: string; message?: string; m?: string; c?: string };
-    throw new AholoError(j.message ?? j.m ?? `HTTP ${res.status}`, j.code ?? j.c, res.status);
-  }
-  // Lux3D endpoints use {c,m,d}; world/asset may return the object directly.
-  const env = json as Envelope<T>;
-  if (env && typeof env === "object" && "c" in env) {
-    if (env.c !== "0" && env.c !== null) throw new AholoError(env.m || `Aholo error ${env.c}`, env.c ?? undefined);
-    return env.d as T;
-  }
-  return json as T;
-}
-
-// ───────────────────────────── asset upload (OUS) ─────────────────────────────
-
-interface UploadToken {
-  ousToken: string;
-  globalDomain: string;
-  blockSize: number;
-}
-
-/** Upload a file via OUS (single upload ≤ blockSize, else multipart) and return its public URL. */
-export async function uploadAsset(buf: Buffer, filename: string): Promise<string> {
-  const tok = await aholo<UploadToken>("GET", `${P}/asset/v1/token`);
-  const md5 = createHash("md5").update(buf).digest("hex");
-  const H = { "ous-token-v2": tok.ousToken };
-  if (buf.length <= tok.blockSize) {
-    const form = new FormData();
-    form.set("md5", md5);
-    form.set("file", new Blob([new Uint8Array(buf)], { type: "application/octet-stream" }), filename);
-    const up = (await (await fetch(`${tok.globalDomain}/ous/api/v2/single/upload`, { method: "POST", headers: H, body: form })).json()) as Envelope<unknown>;
-    if (up.c !== "0") throw new AholoError(`OUS upload failed: ${up.m}`, up.c ?? undefined);
-  } else {
-    // Multipart: init (query params) → parts (≤2 concurrent per file) → status.
-    const bs = tok.blockSize;
-    const blocks = Math.ceil(buf.length / bs);
-    const q = new URLSearchParams({ md5, blocks: String(blocks), size: String(buf.length), name: filename });
-    const init = (await (await fetch(`${tok.globalDomain}/ous/api/v2/block/upload/init?${q}`, { method: "POST", headers: H })).json()) as Envelope<{ lackBlocks?: number[]; deduplicated?: boolean }>;
-    if (init.c !== "0") throw new AholoError(`OUS block init failed: ${init.m}`, init.c ?? undefined);
-    // Deduplicated (same md5 already stored) → no parts needed.
-    const queue = init.d?.deduplicated ? [] : [...(init.d?.lackBlocks ?? Array.from({ length: blocks }, (_, i) => i + 1))];
-    const worker = async () => {
-      for (let b = queue.shift(); b !== undefined; b = queue.shift()) {
-        const form = new FormData();
-        form.set("block", String(b));
-        form.set("file", new Blob([new Uint8Array(buf.subarray((b - 1) * bs, b * bs))], { type: "application/octet-stream" }), filename);
-        const r = (await (await fetch(`${tok.globalDomain}/ous/api/v2/block/upload/part`, { method: "POST", headers: H, body: form })).json()) as Envelope<unknown>;
-        if (r.c !== "0") throw new AholoError(`OUS part ${b} failed: ${r.m}`, r.c ?? undefined);
-      }
-    };
-    await Promise.all([worker(), worker()]);
-  }
-  // Status is bound to the token (status 5 = success, 6/8 = failed).
-  for (let i = 0; i < 80; i++) {
-    await sleep(500);
-    const sj = (await (await fetch(`${tok.globalDomain}/ous/api/v2/upload/status`, { headers: H })).json()) as Envelope<{ status: number; url?: string }>;
-    const s = sj.d?.status;
-    if (s === 5 && sj.d?.url) return sj.d.url;
-    if (s === 6 || s === 8) throw new AholoError(`OUS upload status ${s}`);
-  }
-  throw new AholoError("OUS upload timed out");
-}
-
-/** Raw gateway call for sibling modules (world / rendercloud). */
-export const aholoRaw = aholo;
-
-// ───────────────────────────── Lux3D task endpoints ─────────────────────────────
-
-const L = `${P}/lux3d/v1`;
 type TaskId = number;
+type ImgTo3d = Parameters<Lux3dClient["imgTo3d"]["create"]>[0] & { customSize?: number };
 
 export const lux3d = {
-  multimodalToImage: (b: { img?: string; prompt?: string }) =>
-    aholo<TaskId>("POST", `${L}/generate/multimodal-to-image/task/create`, b),
-  imageToFourView: (b: { img?: string; prompt?: string }) =>
-    aholo<TaskId>("POST", `${L}/generate/image-to-four-view/task/create`, b),
-  imgTo3d: (b: {
-    img?: string;
-    imgs?: string[];
-    version: "G1" | "G1-Turbo";
-    faceCount?: number;
-    outputFormat?: ("zip" | "glb" | "ply")[];
-    enablePbr?: boolean;
-    aiPredictSize?: boolean;
-    /** Model height in mm (Lux3D skill docs); takes priority over aiPredictSize. */
-    customSize?: number;
-  }) => aholo<TaskId>("POST", `${L}/generate/img-to-3d/task/create`, b),
-  textTo3d: (b: {
-    prompt: string;
-    style?: "photorealistic" | "cartoon" | "anime" | "hand_painted" | "cyberpunk" | "fantasy" | "glass";
-    img?: string;
-    version: "G1" | "G1-Turbo";
-    faceCount?: number;
-    outputFormat?: ("zip" | "glb" | "ply")[];
-    enablePbr?: boolean;
-  }) => aholo<TaskId>("POST", `${L}/generate/text-to-3d/task/create`, b),
-  materialTransfer: (b: { img: string; meshUrl: string; outputFormat?: string[] }) =>
-    aholo<TaskId>("POST", `${L}/generate/material-transfer/task/create`, { version: "v3.0-standard", ...b }),
-  autoRig: (b: { modelUrl: string }) => aholo<TaskId>("POST", `${L}/animations/rig/task/create`, b),
-  retarget: (b: {
-    rigModelUrl: string;
-    animationIds: string[];
-    animationOutputMode: "separate" | "combined";
-    outFormat: "glb" | "fbx";
-    animateInPlace?: boolean;
-  }) => aholo<TaskId>("POST", `${L}/animations/retarget/task/create`, b),
+  multimodalToImage: (b: { img: string; prompt?: string }) => call(() => lux3dClient().multimodalToImage.create(b)),
+  imageToFourView: (b: { img: string; prompt?: string }) => call(() => lux3dClient().imageToFourView.create(b)),
+  /** customSize = model height in mm (Lux3D skill docs); takes priority over aiPredictSize. */
+  imgTo3d: (b: ImgTo3d) => call(() => lux3dClient().imgTo3d.create(b as Parameters<Lux3dClient["imgTo3d"]["create"]>[0])),
+  autoRig: (b: { modelUrl: string }) => call(() => lux3dClient().humanoidAutoRig.create(b)),
+  retarget: (b: { rigModelUrl: string; animationIds: string[]; animationOutputMode: "separate" | "combined"; outFormat: "glb" | "fbx"; animateInPlace?: boolean }) =>
+    call(() => lux3dClient().humanoidAnimationRetarget.create({ ...b, animationIds: b.animationIds as HumanoidAnimationId[] })),
   multiFormatExport: (b: { modelUrl: string; outputFormat: ("usdz" | "obj_zip" | "fbx_zip" | "stl" | "3mf")[] }) =>
-    aholo<TaskId>("POST", `${L}/multi-format-export/task/create`, b),
-  getTask: (taskid: TaskId) =>
-    aholo<{ taskId: number; status: number; outputs?: { content: string | null }[] }>(
-      "GET",
-      `${L}/generate/task/get?taskid=${taskid}`,
-    ),
+    call(() => lux3dClient().multiFormatExport.create(b as Parameters<Lux3dClient["multiFormatExport"]["create"]>[0])),
+  getTask: (taskid: TaskId) => call(() => lux3dClient().tasks.retrieve(taskid)),
 };
 
 /** Status codes: 0 init, 1 running, 3 success, 4 failed, 6 cancelled. */
@@ -433,7 +300,7 @@ async function startStage(job: Job, stage: Stage) {
   switch (stage) {
     case "mascot": {
       if (!job.options.mascot) return startStage(job, "mesh");
-      const t = await lux3d.multimodalToImage({ img: job.remote.photo, prompt: MASCOT_PROMPT(job.options.prompt) });
+      const t = await lux3d.multimodalToImage({ img: job.remote.photo!, prompt: MASCOT_PROMPT(job.options.prompt) });
       return enter(job, "mascot", t);
     }
     case "mesh": {
@@ -775,6 +642,20 @@ async function finish(job: Job) {
 
 const COLORS = ["#f27f0d", "#38bdf8", "#a3e635", "#f472b6", "#facc15", "#c084fc"];
 
+/** Aholo services this job actually used (shown as the "Powered by" strip). */
+export function jobServices(job: Job): AholoServiceKey[] {
+  if (job.mode !== "live") return [];
+  const s: AholoServiceKey[] = [];
+  if (job.remote.photo) s.push("asset");
+  if (job.files.mascot) s.push("concept");
+  if (job.files.mesh || job.remote.mesh) s.push("mesh");
+  if (job.files.rigged) s.push("rig");
+  if (Object.keys(job.files.anims).length) s.push("retarget");
+  if (job.files.poster) s.push("poster");
+  if (Object.keys(job.files.exports).length) s.push("export");
+  return s;
+}
+
 export function jobToFighter(job: Job): FighterDef {
   const id = job.id;
   const anims: Partial<Record<Move, string>> = {};
@@ -795,6 +676,7 @@ export function jobToFighter(job: Job): FighterDef {
     color: COLORS[parseInt(id.slice(-2), 16) % COLORS.length],
     source: job.mode === "mock" ? "mock" : "lux3d",
     createdAt: job.createdAt,
+    services: jobServices(job),
   };
 }
 
@@ -869,8 +751,7 @@ async function fetchToBuffer(url: string, file: string): Promise<Buffer> {
   }
 }
 
-function firstContent(outputs?: { content: string | null }[]) {
+function firstContent(outputs?: { content?: string | null }[]) {
   return outputs?.[0]?.content ?? undefined;
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

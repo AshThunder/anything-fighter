@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { FighterDef } from "@/lib/fighters";
+import { PoweredBy } from "@/components/ui/PoweredBy";
 
 const VersusPreview = dynamic(() => import("@/components/landing/VersusPreview"), { ssr: false });
 
@@ -30,7 +31,7 @@ export default function GalleryClient() {
         <div>
           <h1 className="font-display text-4xl font-black italic">Gallery</h1>
           <p className="text-sm text-orange-100/60">
-            Every fighter here started as one photo. Lux3D re-imagined it, built a PBR mesh, rigged it and retargeted 10 moves; RenderCloud shot the poster.
+            Every fighter here started as one photo. Lux3D re-imagined it, built a PBR mesh, rigged it and retargeted 10 moves; RenderCloud shot the poster. Each card lists the Aholo services that built it.
           </p>
         </div>
         {!fighters && <p className="text-orange-200/50">Loading…</p>}
@@ -59,6 +60,7 @@ export default function GalleryClient() {
                   <VersusPreview a={f} solo />
                 </div>
               )}
+              <PoweredBy fighter={f} className="px-3 pt-2.5" />
               <div className="flex items-center gap-2 p-3">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: f.color }} />
                 <div className="flex-1">
