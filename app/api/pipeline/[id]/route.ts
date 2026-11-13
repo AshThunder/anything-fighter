@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { advanceJob, AholoError, jobToFighter } from "@/lib/aholo";
+import { advanceJob, AholoError, jobToFighter, publicJob } from "@/lib/aholo";
 import { fighterFileProbe } from "@/lib/store";
 
 export const maxDuration = 300;
@@ -14,7 +14,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     // instead of offering a button that lands on a fighter that can't load.
     const model = fighter?.modelUrl.match(/\/api\/assets\/[^/]+\/([^/?]+)$/)?.[1];
     const modelMissing = !!model && !(await fighterFileProbe(id, model));
-    return NextResponse.json({ job, fighter, modelMissing });
+    return NextResponse.json({ job: publicJob(job), fighter, modelMissing });
   } catch (e) {
     const status = e instanceof AholoError && e.status ? e.status : 500;
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status });

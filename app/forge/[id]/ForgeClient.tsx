@@ -222,7 +222,7 @@ export default function ForgeClient() {
 
         <section className="grid gap-5 md:grid-cols-[260px_1fr]">
           <div className="flex gap-3 md:flex-col">
-            {[asset(job?.files.photo), asset(job?.files.mascot)].map((src, i) => (
+            {[undefined, asset(job?.files.mascot)].map((src, i) => (
               <div key={i} className="relative aspect-square w-1/2 overflow-hidden rounded-2xl border border-orange-300/15 bg-black/40 md:w-full">
                 {src ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -233,7 +233,7 @@ export default function ForgeClient() {
                     onError={(e) => (e.currentTarget.style.visibility = "hidden")}
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-orange-200/40">{i ? "concept art incoming…" : "…"}</div>
+                  <div className="flex h-full items-center justify-center text-xs text-orange-200/40">{i ? "concept art incoming…" : "🔒 kept private"}</div>
                 )}
                 <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-orange-100/70">
                   {i ? "Lux3D concept" : "Your photo"}

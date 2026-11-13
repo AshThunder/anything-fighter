@@ -14,3 +14,5 @@ public/arenas/*/scan.mp4
 .next
 node_modules
 .env*
+# players' uploaded photos stay private (only inside the durable Blob bundle)
+public/fighters/gen-*/photo.*

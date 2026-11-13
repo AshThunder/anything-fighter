@@ -1,5 +1,11 @@
 import type { Move } from "./moves";
 
+/**
+ * Players' uploaded photos stay private: a forged (gen-*) fighter's photo.* is only kept inside its durable
+ * bundle (and used server-side for the Aholo upload), never served publicly or listed.
+ */
+export const isPrivateFighterFile = (id: string, file: string) => id.startsWith("gen-") && /^photo\./i.test(file);
+
 export type FighterSource = "placeholder" | "lux3d" | "mock";
 
 export interface FighterDef {

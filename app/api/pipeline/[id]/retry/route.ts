@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AholoError, retryJob } from "@/lib/aholo";
+import { AholoError, retryJob, publicJob } from "@/lib/aholo";
 
 export const maxDuration = 300;
 
@@ -7,7 +7,7 @@ export const maxDuration = 300;
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   try {
-    return NextResponse.json({ job: await retryJob(id) });
+    return NextResponse.json({ job: publicJob(await retryJob(id)) });
   } catch (e) {
     const status = e instanceof AholoError && e.status ? e.status : 500;
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status });
