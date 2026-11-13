@@ -26,7 +26,7 @@ export function SiteHeader({ cta }: { cta?: "forge" | "gallery" }) {
               <span className="hidden sm:inline">+ Forge a fighter</span>
             </Link>
           ) : (
-            <Link href="/gallery" className="btn btn-ghost btn-sm">
+            <Link href="/gallery" className="btn btn-outline btn-sm" data-nav="gallery">
               Gallery
             </Link>
           )}

@@ -9,7 +9,7 @@ import { PoweredBy } from "@/components/ui/PoweredBy";
 import { SiteHeader } from "@/components/ui/SiteHeader";
 import type { AholoServiceKey } from "@/lib/fighters";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Hud } from "@/components/game/Hud";
 import { useGame } from "@/lib/game/store";
 import type { FighterDef } from "@/lib/fighters";
@@ -82,6 +82,19 @@ export default function ForgeClient() {
   const [loop, setLoop] = useState(0); // bump to restart polling (after a manual retry)
   const [lost, setLost] = useState(false);
   const [gone, setGone] = useState(false); // finished, but its 3D model was lost from storage
+  const [deleted, setDeleted] = useState(false);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
+  const deleteToken = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        return id ? sessionStorage.getItem(`af-delete:${id}`) : null;
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
 
   /**
    * Poll loop. Each GET advances the job server-side, so polling must never silently stop: the old version
@@ -227,7 +240,7 @@ export default function ForgeClient() {
       <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
         <section className={`grid gap-5 ${lost ? "" : "md:grid-cols-[260px_1fr]"}`}>
           <div className={`flex gap-3 md:flex-col ${lost ? "hidden" : ""}`}>
-            {[undefined, asset(job?.files.mascot)].map((src, i) => (
+            {([fighter?.photoPublic && fighter.photoUrl ? fighter.photoUrl : undefined, asset(job?.files.mascot)] as (string | undefined)[]).map((src, i) => (
               <div key={i} className="relative aspect-square w-1/2 overflow-hidden rounded-xl border border-line bg-panel md:w-full">
                 {src ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -421,20 +434,60 @@ export default function ForgeClient() {
                   See it in the gallery
                 </Link>
               </div>
-            ) : (
-              !job?.error &&
-              !lost && (
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel-2 p-3 text-sm text-muted">
-                  <span className="min-w-[12rem] flex-1">
-                    <b className="text-gold">Tip</b> · {TIPS[tip % TIPS.length]}
-                  </span>
-                  {!practice && (
-                    <button onClick={startPractice} className="btn btn-ghost border-blaze" data-action="practice">
-                      🥊 Practice while you wait
-                    </button>
-                  )}
+            ) : null}
+            {fighter && !gone && deleteToken && !deleted && (
+              <div className="rounded-lg border border-line bg-panel-2 p-3 text-sm text-muted" data-delete-link>
+                <p>This control is only shown to you, in this browser, after the forge. It removes the fighter from the gallery and unpublishes the original photo.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={async () => {
+                      if (!deleteToken || !id) return;
+                      if (!window.confirm("Remove this fighter from the gallery and unpublish its photo?")) return;
+                      setDeleteErr(null);
+                      try {
+                        const res = await fetch(`/api/fighters/${id}/delete`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ token: deleteToken }),
+                        });
+                        const j = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setDeleteErr(j.error ?? "Couldn't delete this fighter.");
+                          return;
+                        }
+                        try {
+                          sessionStorage.removeItem(`af-delete:${id}`);
+                        } catch {
+                          /* ignore */
+                        }
+                        setDeleted(true);
+                      } catch {
+                        setDeleteErr("Couldn't reach the server.");
+                      }
+                    }}
+                  >
+                    Remove from gallery
+                  </button>
                 </div>
-              )
+                {deleteErr && <p className="mt-2 text-danger">{deleteErr}</p>}
+              </div>
+            )}
+            {fighter && deleted && (
+              <p className="text-sm text-ok">Removed from the gallery. The original photo is unpublished.</p>
+            )}
+            {!fighter && !job?.error && !lost && (
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel-2 p-3 text-sm text-muted">
+                <span className="min-w-[12rem] flex-1">
+                  <b className="text-gold">Tip</b> · {TIPS[tip % TIPS.length]}
+                </span>
+                {!practice && (
+                  <button onClick={startPractice} className="btn btn-ghost border-blaze" data-action="practice">
+                    🥊 Practice while you wait
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </section>
