@@ -1,0 +1,23 @@
+{
+  "id": "sneaker",
+  "name": "Sole Survivor",
+  "tagline": "Laces up. Lights out.",
+  "color": "#38bdf8",
+  "source": "lux3d",
+  "modelUrl": "/api/assets/sneaker/rigged.glb",
+  "animUrls": {
+    "walk": "/api/assets/sneaker/anim-walk.glb",
+    "hit": "/api/assets/sneaker/anim-hit.glb",
+    "hit2": "/api/assets/sneaker/anim-hit2.glb",
+    "ko": "/api/assets/sneaker/anim-ko.glb",
+    "block": "/api/assets/sneaker/anim-block.glb",
+    "punch": "/api/assets/sneaker/anim-punch.glb",
+    "kick": "/api/assets/sneaker/anim-kick.glb",
+    "idle": "/api/assets/sneaker/anim-idle.glb",
+    "punch2": "/api/assets/sneaker/anim-punch2.glb",
+    "victory": "/api/assets/sneaker/anim-victory.glb"
+  },
+  "thumbUrl": "/api/assets/sneaker/mascot.png",
+  "photoUrl": "/api/assets/sneaker/photo.png",
+  "createdAt": 1794527628949
+}

@@ -1,0 +1,23 @@
+{
+  "id": "cactus",
+  "name": "Prickly Pete",
+  "tagline": "Hugs not recommended.",
+  "color": "#22c55e",
+  "source": "lux3d",
+  "modelUrl": "/api/assets/cactus/rigged.glb",
+  "animUrls": {
+    "punch2": "/api/assets/cactus/anim-punch2.glb",
+    "punch": "/api/assets/cactus/anim-punch.glb",
+    "hit2": "/api/assets/cactus/anim-hit2.glb",
+    "walk": "/api/assets/cactus/anim-walk.glb",
+    "ko": "/api/assets/cactus/anim-ko.glb",
+    "victory": "/api/assets/cactus/anim-victory.glb",
+    "block": "/api/assets/cactus/anim-block.glb",
+    "hit": "/api/assets/cactus/anim-hit.glb",
+    "kick": "/api/assets/cactus/anim-kick.glb",
+    "idle": "/api/assets/cactus/anim-idle.glb"
+  },
+  "thumbUrl": "/api/assets/cactus/mascot.png",
+  "photoUrl": "/api/assets/cactus/photo.png",
+  "createdAt": 1794527488906
+}

@@ -1,0 +1,23 @@
+{
+  "id": "duck",
+  "name": "Quack Attack",
+  "tagline": "Bath-time is over.",
+  "color": "#facc15",
+  "source": "lux3d",
+  "modelUrl": "/api/assets/duck/rigged.glb",
+  "animUrls": {
+    "idle": "/api/assets/duck/anim-idle.glb",
+    "block": "/api/assets/duck/anim-block.glb",
+    "hit": "/api/assets/duck/anim-hit.glb",
+    "kick": "/api/assets/duck/anim-kick.glb",
+    "hit2": "/api/assets/duck/anim-hit2.glb",
+    "punch2": "/api/assets/duck/anim-punch2.glb",
+    "ko": "/api/assets/duck/anim-ko.glb",
+    "victory": "/api/assets/duck/anim-victory.glb",
+    "walk": "/api/assets/duck/anim-walk.glb",
+    "punch": "/api/assets/duck/anim-punch.glb"
+  },
+  "thumbUrl": "/api/assets/duck/mascot.png",
+  "photoUrl": "/api/assets/duck/photo.png",
+  "createdAt": 1794527549967
+}

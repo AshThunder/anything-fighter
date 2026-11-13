@@ -1,0 +1,16 @@
+import { connection, NextResponse } from "next/server";
+import { listArenas } from "@/lib/arenas-server";
+import { advanceWorldJob } from "@/lib/world";
+
+/** Poll + advance a SpatialGen / Reality arena job; returns the finished arena when ready. */
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  await connection();
+  const { id } = await ctx.params;
+  try {
+    const job = await advanceWorldJob(id);
+    const arena = job.status === "SUCCEEDED" ? (await listArenas()).find((a) => a.id === id) : undefined;
+    return NextResponse.json({ job, arena });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 404 });
+  }
+}
