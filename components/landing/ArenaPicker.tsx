@@ -17,7 +17,7 @@ const thumb = (a: ArenaDef) => a.cover ?? a.panoUrl;
 
 /**
  * Stage select. Playable arenas are big swipeable cards with real previews; worlds still in Aholo's
- * SpatialGen / Reality queue are tucked behind a "Coming soon" toggle (with the room-scan builder).
+ * SpatialGen / Reality queue are tucked behind a "Coming soon" toggle. The room-scan builder lives above this picker.
  */
 export function ArenaPicker({
   arenas,
@@ -62,7 +62,12 @@ export function ArenaPicker({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={src} alt={`${a.name} preview`} className={`absolute inset-0 h-full w-full object-cover transition duration-500 ${sel ? "scale-105" : "group-hover:scale-105"}`} />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-panel font-arcade text-4xl text-line-strong">{a.name.slice(0, 1)}</div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-panel px-3 text-center">
+                    <span className="font-arcade text-3xl text-line-strong">{a.source === "reality" ? "🏠" : a.name.slice(0, 1)}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      {a.source === "reality" ? "Aholo Reality 3DGS" : "Preview coming soon"}
+                    </span>
+                  </div>
                 )}
                 <span className="absolute left-2 top-2 rounded-md bg-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-fg">{BADGE[a.source]}</span>
                 {sel && <span className="tag absolute right-2 top-2 bg-blaze">Selected</span>}

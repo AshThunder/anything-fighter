@@ -79,3 +79,6 @@ export async function call<T>(fn: () => Promise<T>): Promise<T> {
 
 /** Upload a buffer via @manycore/aholo-sdk-asset and return its public URL. */
 export const uploadAsset = (buf: Buffer, filename: string) => call(async () => (await assetClient().uploadBuffer(buf, { filename })).url);
+
+/** Short-lived OUS token from the official asset SDK (API key stays on the server). */
+export const getUploadToken = () => call(() => assetClient().getUploadToken());

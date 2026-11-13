@@ -8,6 +8,18 @@ import { isWorldFailed, isWorldStuck, listWorldJobIds, loadWorldJob, worldDetail
 export const ARENA_ROOT = path.join(process.cwd(), "public", "arenas");
 export const arenaAsset = (id: string, file: string) => `/api/assets/arenas/${id}/${file}`;
 
+async function shippedThumb(id: string): Promise<string | undefined> {
+  const p = path.join(process.cwd(), "public", "arenas", "thumbs", `${id}.jpg`);
+  return fs.stat(p).then(() => `/arenas/thumbs/${id}.jpg`, () => undefined);
+}
+
+/** Prefer Aholo's panorama, then the official world.cover, then a baked thumb. */
+async function worldCover(id: string, d: WorldDetail, panoFile?: string): Promise<string | undefined> {
+  if (panoFile) return arenaAsset(id, panoFile);
+  if (d.cover) return d.cover;
+  return shippedThumb(id);
+}
+
 const NAMES: Record<string, string> = {
   "kitchen-colosseum": "Kitchen Colosseum",
   "toy-shop": "Toy Shop at Midnight",
@@ -65,7 +77,7 @@ async function resolveShippedPending(id: string, ids: string[]): Promise<ArenaDe
       // phones: direct CDN first (no redirect hop), then stream through our origin
       splatUrls: splat ? [...(direct ? [direct] : []), `${arenaAsset(id, splat)}?proxy=1`] : undefined,
       panoUrl: pano ? arenaAsset(id, pano) : undefined,
-      cover: pano ? arenaAsset(id, pano) : undefined,
+      cover: await worldCover(id, d, pano),
       note: kind,
     };
   }
@@ -74,7 +86,7 @@ async function resolveShippedPending(id: string, ids: string[]): Promise<ArenaDe
   if (!alive.length) return null;
   const best = alive.find((x) => x.d?.status === "RUNNING") ?? alive[0];
   const s = await statusNote(kind, best.d, best.w);
-  return { id, name, prompt, source: reality ? "reality" : "spatialgen", worldId: best.w, pending: true, ...s };
+  return { id, name, prompt, source: reality ? "reality" : "spatialgen", worldId: best.w, pending: true, cover: await shippedThumb(id), ...s };
 }
 
 /** Built-ins + finished/pending SpatialGen & Reality arenas (shipped dirs + jobs created in the app). */
@@ -132,6 +144,7 @@ export async function listArenas(): Promise<ArenaDef[]> {
         upAxis: j.upAxis ?? "Z",
         splatUrl: arenaAsset(j.id, j.mode === "mock" ? "world.sog" : "world.spz"),
         panoUrl: j.mode === "live" && j.kind === "spatialgen" ? arenaAsset(j.id, "pano.jpg") : undefined,
+        cover: j.coverUrl,
         note: kind + (j.mode === "mock" ? " (mock: no API key)" : ""),
       });
     } else {
