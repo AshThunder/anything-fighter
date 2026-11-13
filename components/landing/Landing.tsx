@@ -22,6 +22,13 @@ async function downscale(file: File, max = 1024): Promise<Blob> {
   return new Promise((res) => c.toBlob((b) => res(b!), "image/jpeg", 0.86));
 }
 
+/** Suggest a fighter name from the file name, but not camera junk like "IMG_2041" or "1794557018319". */
+function nameFromFile(file: string): string {
+  const base = file.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+  if (!/[a-z]{3}/i.test(base) || /^(img|dsc|pxl|photo|image|screenshot|whatsapp|signal|mvimg|dcim)\b/i.test(base) || /\d{5,}/.test(base)) return "";
+  return base.slice(0, 24);
+}
+
 function ForgePanel({ live }: { live: boolean | null }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -38,7 +45,7 @@ function ForgePanel({ live }: { live: boolean | null }) {
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setError(null);
-    if (!name) setName(f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").slice(0, 24));
+    if (!name) setName(nameFromFile(f.name));
   };
 
   const forge = async () => {
@@ -58,7 +65,7 @@ function ForgePanel({ live }: { live: boolean | null }) {
       try {
         r = JSON.parse(text);
       } catch {
-        r = { error: `Server busy (HTTP ${res.status}), please try again.` };
+        r = { error: "The server is busy, please try again in a moment." };
       }
     } catch {
       r = { error: "Couldn't reach the server, check your connection and try again." };
@@ -169,13 +176,16 @@ export default function Landing() {
   const [mode, setMode] = useState<"live" | "mock" | null>(null);
 
   const loadArenas = useCallback(async () => {
-    const r = await fetch("/api/arenas").then((x) => x.json());
+    const r = await fetch("/api/arenas")
+      .then((x) => x.json())
+      .catch(() => ({}));
     if (r.arenas?.length) setArenas(r.arenas);
   }, []);
   useEffect(() => {
     fetch("/api/fighters")
       .then((x) => x.json())
-      .then((r) => r.fighters?.length && setFighters(r.fighters));
+      .then((r) => r.fighters?.length && setFighters(r.fighters))
+      .catch(() => {});
     fetch("/api/arenas")
       .then((x) => x.json())
       .then((r) => {

@@ -10,8 +10,8 @@ const MAX_BYTES = 8 * 1024 * 1024;
 export async function POST(req: Request) {
   const form = await req.formData();
   const photo = form.get("photo");
-  if (!(photo instanceof File)) return NextResponse.json({ error: "photo is required" }, { status: 400 });
-  if (photo.size > MAX_BYTES) return NextResponse.json({ error: "photo too large" }, { status: 413 });
+  if (!(photo instanceof File)) return NextResponse.json({ error: "Pick a photo first." }, { status: 400 });
+  if (photo.size > MAX_BYTES) return NextResponse.json({ error: "That photo is too large (max 8 MB)." }, { status: 413 });
   const ext = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
 
   let forceMock = false;
@@ -69,7 +69,8 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ job, labels: STAGE_LABEL });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+    console.error(`[pipeline] forge failed to start: ${e instanceof Error ? e.message : e}`);
+    return NextResponse.json({ error: "The forge couldn't start right now. Try again in a minute, or fight with the roster." }, { status: 500 });
   }
 }
 

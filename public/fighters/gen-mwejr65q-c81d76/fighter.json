@@ -1,0 +1,18 @@
+{
+  "id": "gen-mwejr65q-c81d76",
+  "name": "Mama",
+  "tagline": "Lux3D mesh, fights freestyle",
+  "modelUrl": "/api/assets/gen-mwejr65q-c81d76/statue.glb",
+  "thumbUrl": "/api/assets/gen-mwejr65q-c81d76/thumb.webp",
+  "photoUrl": "/api/assets/gen-mwejr65q-c81d76/photo.jpg",
+  "posterUrl": "/api/assets/gen-mwejr65q-c81d76/poster.jpg",
+  "color": "#facc15",
+  "source": "lux3d",
+  "createdAt": 1794548351727,
+  "services": [
+    "asset",
+    "concept",
+    "mesh",
+    "poster"
+  ]
+}

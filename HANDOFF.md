@@ -207,14 +207,17 @@ Local OpenAPI / `llms.txt` copies may exist at `/workspace/openapi.json` and `/w
 - **`@manycore/aholo-viewer` 1.14.0** (3DGS; vendored — see below)
 - **`sharp`** (poster JPEG, roster thumbs)
 - **`@vercel/functions`** (Runtime Cache for job state and generated files on Vercel)
+- **`@vercel/blob`** (optional durable store for finished forged fighters, `lib/durable.ts`)
 - **`@gltf-transform/*`** + `meshoptimizer` (shrink textures, strip retarget GLBs to skeleton + clip, weld/simplify)
 - Fonts (local, `app/fonts`): Space Grotesk (display), Inter (body), **Bungee** (arcade headings, `font-arcade` / `.arcade-title`, OFL)
 - `server-only` on Aholo / store modules so the key cannot leak into the client bundle
 
-There is **no database**. There is no paid Blob/Redis/Postgres store. Persistence is:
+There is **no database**. Persistence is:
 
 - Locally: `public/fighters/<id>/` and `public/arenas/<id>/`
-- On Vercel: starter roster is baked into the deployment FS (read-only). New jobs and artefacts go to **`/tmp`** (same-instance only) **plus Vercel Runtime Cache** (per-region, ephemeral, 2 MB item limit — large GLBs are base64-chunked at 1.2 MB). Job TTL 6 hours; finished-fighter TTL 7 days. Cache entries can be evicted — generated fighters may disappear. This is a known limitation.
+- On Vercel: starter roster **plus baked user forges** (`public/fighters/gen-mwejr65q-c81d76` Mama, `gen-mwemw090-24ff0e` SDK Test, `gen-mwel0i8j-076867` Quack Test; un-ignored by name in `.gitignore` / `.vercelignore`) are in the deployment FS (read-only, durable). New jobs and artefacts go to **`/tmp`** (same-instance only) **plus Vercel Runtime Cache** (per-region, ephemeral, 2 MB item limit — large GLBs are base64-chunked at 1.2 MB). Job TTL 6 hours; finished-fighter TTL 7 days. Cache entries **do** get evicted (on 13 Nov ~12:00 WAT Mama's `rigged.glb`, two statues and several clips were already gone while their `fighter.json` was still listed).
+- **Durable tier (`lib/durable.ts`, added 13 Nov 2026):** when a Vercel Blob store is connected (`BLOB_READ_WRITE_TOKEN`, or `BLOB_STORE_ID` + OIDC; `BLOB_ACCESS` default `private`), `finish()` saves every finished **live** fighter as ONE pack `fighters/<id>.afp` (optimised files + `fighter.json` + final `job.json`; never `*.orig.glb`; the mesh only for freestyle fighters, for the re-rig) and adds the id to `fighters/index.json`: 2 Blob advanced ops per forge (Hobby includes 2,000/month). Reads: `/tmp` → shipped FS → Runtime Cache → Blob pack (unpacked into `/tmp` once per instance). `listGeneratedFighters` backfills one not-yet-durable finished fighter per request (`waitUntil`). Without Blob credentials it is a no-op. **The Blob store is not connected yet** (see §9). Offline test: `npm run test:durable` (mocked Blob API, no network).
+- `listGeneratedFighters` skips any fighter whose model file is gone (`fighterFileProbe`: fs stat / cache meta + last chunk / durable index), and the fight scene wraps every fighter in `components/game/SafeModel.tsx` (failing clip → same model with procedural moves; failing model → Boltbox stand-in), so a vanished asset never blanks the canvas.
 
 `npm run predev` / `prebuild` run `npm run vendor`, which copies `node_modules/@manycore/aholo-viewer/dist` → `public/vendor/aholo-viewer`. Import the viewer at runtime with a non-bundled `import()` or its workers break (`parseSplatData` / `n.onerror`).
 
@@ -311,11 +314,11 @@ Placeholder only if fewer than two real fighters exist: **robot** / Boltbox (Rob
 
 User forges live under `gen-*`. Pipeline test ids `gen-mwekglv2-db32ab` and `gen-mwel0i8j-076867` are gallery-only (`GALLERY_ONLY_IDS` in `lib/fighters.ts`). `test-*` is also hidden from the roster unless `?all=1`.
 
-**Mama** (`gen-mwejr65q-c81d76`) is a user-forged fighter on **production** (Runtime Cache / `/tmp`, not in this git tree). Lux3D refused her original rig (`RIG_ELIGIBILITY_FAILED`; her mesh was 0.27 × 0.30 × 0.07 m because `aiPredictSize` sized her like a figurine). **Re-rig succeeded on 13 Nov 2026 (rig started ~07:52 WAT) on attempt 1** (1.8 m normalised copy of her existing mesh, no new mesh/concept): `rigged.glb` + 8 clips (idle, walk, punch, kick, block, hit, ko, victory) + a new posed RenderCloud poster; done ~08:03 WAT. Her one-shot `rerig` is used up (`rerig.attempt = 1`).
+**Mama** (`gen-mwejr65q-c81d76`) is a user-forged fighter on **production** (Runtime Cache / `/tmp`, not in this git tree). Lux3D refused her original rig (`RIG_ELIGIBILITY_FAILED`; her mesh was 0.27 × 0.30 × 0.07 m because `aiPredictSize` sized her like a figurine). **Re-rig succeeded on 13 Nov 2026 (rig started ~07:52 WAT) on attempt 1** (1.8 m normalised copy of her existing mesh, no new mesh/concept): `rigged.glb` + 8 clips (idle, walk, punch, kick, block, hit, ko, victory) + a new posed RenderCloud poster; done ~08:03 WAT. Her one-shot `rerig` is used up (`rerig.attempt = 1`). **By ~12:00 WAT the Runtime Cache had evicted her `rigged.glb` (and `mesh.glb`, `anim-ko.glb`)**, so the rigged Mama is lost; only her earlier freestyle `statue.glb` survived. She is now **baked into git as a freestyle fighter** (`public/fighters/gen-mwejr65q-c81d76/`: `statue.glb`, photo, poster, thumb; procedural moves). Getting the rigged Mama back needs a new forge from her concept image (~40 credits, owner decision).
 
 ### Arenas & world jobs
 
-Built-in always-available arenas: **Neon Ring** (`stage`) and, as a 3DGS fallback **only while no generated splat is ready**, the official Aholo Viewer **sample bear** `.sog` (it drops out of the list once a generated world is playable, which is the case now).
+Built-in always-available arenas: **Neon Ring** (`stage`) and the official Aholo Viewer **sample bear** `.sog` (always listed after the finished worlds since 13 Nov 2026; it used to drop out once a generated world was playable, a side effect of `31af7df`). `/api/arenas` falls back to these two built-ins if listing the worlds throws.
 
 SpatialGen / Reality dirs under `public/arenas/` (prompts + `world-id.txt`; no baked splat/pano in git; finished worlds are served via signed-URL redirects):
 
@@ -344,11 +347,11 @@ The account can run **one world job at a time**. **There is no cancel endpoint.*
 
 ### Mock mode
 
-If `AHOLO_API_KEY` is unset, **every** pipeline (fighters, worlds, room scans) runs in mock mode: staged delays, no credits, clearly labelled in the UI. Mock fighters reuse the placeholder robot rig so the UX is demoable offline. The spend guard can also force mock with `FORGE_LIMIT_FALLBACK=mock` when a cap is hit (default is to HTTP 429 and tell the user to try the roster).
+If `AHOLO_API_KEY` is unset, **every** pipeline (fighters, worlds, room scans) runs in mock mode: staged delays, no credits, clearly labelled in the UI. Mock fighters reuse the placeholder robot rig so the UX is demoable offline. When a spend-guard cap is hit the forge continues in mock mode by default (`FORGE_LIMIT_FALLBACK` unset or `mock`; `block` = old HTTP 429). Such jobs carry `mockReason: "limit"`: the forge page shows a "demo forge, no credits, stand-in robot body, live forging resets at midnight Lagos time" note, the fighter's tagline says so, and on a live deployment mock fighters are hidden from the public roster and gallery (`/fight` and the forge page still find them via `/api/fighters?all=1`).
 
 ### Spend guard
 
-`lib/forge-limit.ts`, applied in `POST /api/pipeline` for live jobs only. Counters live in Runtime Cache namespace `anything-fighter-limits`, or an in-memory `Map` (per instance, resets on cold start) when the cache API is missing. Limits use the **Africa/Lagos calendar day**.
+`lib/forge-limit.ts`, applied in `POST /api/pipeline` for live jobs only. Default fallback is **mock** (changed 13 Nov 2026 so judges never dead-end). Counters live in Runtime Cache namespace `anything-fighter-limits`, or an in-memory `Map` (per instance, resets on cold start) when the cache API is missing. Limits use the **Africa/Lagos calendar day**.
 
 ---
 
@@ -408,7 +411,9 @@ Lux3D JSON envelopes look like `{ c, m, d }` with `c === "0"` for OK. World/asse
 | `AHOLO_MESH_FACES` | `faceCount` (10k–300k) | `60000` |
 | `FORGE_IP_DAILY_LIMIT` | Live forges per client IP per Lagos day | `2` |
 | `FORGE_GLOBAL_DAILY_LIMIT` | Live forges across all IPs per Lagos day | `15` |
-| `FORGE_LIMIT_FALLBACK` | When a cap is hit: `block` (HTTP 429, use the roster) or `mock` (continue, no credits) | `block` |
+| `FORGE_LIMIT_FALLBACK` | When a cap is hit: `mock` (continue as a labelled demo forge, no credits) or `block` (HTTP 429, use the roster) | `mock` (code default since 13 Nov 2026; unset on Vercel) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store for durable forged fighters (`lib/durable.ts`). Created automatically when a Blob store is connected to the project. **Secret.** Unset → Runtime Cache only | unset (not connected yet) |
+| `BLOB_ACCESS` | `private` or `public`; must match the store | `private` |
 | `POSTER_STAGE` | Set to `off` to skip RenderCloud posters in the live pipeline | (on) |
 | `WORLD_QUEUE_GUARD` | Set to `off` to allow new world jobs even when the account queue is busy (usually a bad idea) | (on) |
 | `VERCEL` | Set automatically on Vercel; switches storage to `/tmp` + Runtime Cache | unset locally |
@@ -510,7 +515,7 @@ public/arenas/*/scan.mp4
 
 Also gitignored and therefore not in the repo: `public/vendor/` (rebuilt by `npm run vendor`), `public/arenas/room-*`, `public/arenas/world-*`, some poster intermediates, `.env*`, `.vercel/`, `.next/`. Starter-roster GLBs *are* supposed to be tracked; confirm they are present after clone (`public/fighters/mug|sneaker|duck|toaster|cactus|robot`).
 
-**Storage caveat:** user-forged fighters on Vercel live in ephemeral Runtime Cache. They can vanish. For a durable demo roster, bake finished fighters into `public/fighters/<id>/` and commit the *optimised* assets (not `*.orig.glb`), or accept that only the starter five are guaranteed.
+**Storage caveat:** until a Blob store is connected, user-forged fighters on Vercel live in ephemeral Runtime Cache and do vanish (see "Reliability for judging" below). Mama, SDK Test and Quack Test are now baked into `public/fighters/<id>/` (optimised assets only). To bake another one: download its files from `/api/assets/<id>/…`, copy only optimised files (never `*.orig.glb`), write `fighter.json`, and add a `!public/fighters/<id>/` line to both `.gitignore` and `.vercelignore`.
 
 **UI:** redesigned (see §5 "UI structure"). Remaining polish ideas: tune Kitchen Colosseum / My Room splat placement, gamepad support, best-of-3 rounds with win icons.
 
@@ -538,11 +543,20 @@ Report: owner's Android (Chrome, ~412 px), prod `dpl_6qmMATG1V36wf8K8JSLBJw1a1RY
 **Verified on prod** (Playwright + Chrome, 412×915, DPR 2.625, touch, Android UA, 4× CPU throttle, SwiftShader): Kitchen Colosseum, My Room, Toy Shop, Rooftop Dojo all render the splat (`ready`); Neon Ring and no-arena default fine; forced viewer context loss → Kitchen panorama; blank render (debug placement off into space) → Neon Ring (My Room has no pano); bad splat URL → Neon Ring; `view=pano` Toy Shop → panorama. Desktop 1440×900 unchanged. Screenshots: `/workspace/shots/android/` (`prod-*.png`, `prod-grid-arenas.png`, `prod-grid-fallbacks.png`, `before-prod-pano-kitchen.png` = the reproduced bug, `desktop-*.png`). Test script: `/workspace/tools/android.mjs <url> <out> [waitMs] [viewer|r3f]` (`PROXY_API=<prod>` routes `/api/arenas|assets` when testing a local `next start`).
 **Owner to check on the phone:** one fight per arena; if a world falls back, the console line `[game] splat arena fallback (<reason>)` names the reason (remote-debug via `chrome://inspect`). Panorama fallback shows the world's 360° photo: fighters stand over it (no floor alignment), fine as a fallback.
 
+### Reliability for judging: DONE in code, NOT deployed (13 Nov 2026, ~13:30 WAT)
+Commit: see the commit table (`Reliability for judging …`). **Not deployed**: prod is still `dpl_292pigZcsTVWyhW8THvRx3pSLT8v`. Pushing `master` does not deploy (the Vercel project has no Git integration; deploys are `vercel deploy --prod` from a checkout). No Aholo credits spent, no world jobs, no e2e runs; prod env vars unchanged.
+1. **Forged-fighter durability.** Finding: forged fighters are rehosted (not served from expiring Lux3D URLs) but only into Runtime Cache + `/tmp`, and the cache was already evicting them: on prod at ~12:00 WAT Mama `rigged.glb`/`mesh.glb`/`anim-ko.glb`, Kicks Test `statue.glb`, `gen-mweoxohh-7015b6` `statue.glb`/`photo.jpg` and Quack Test `anim-punch/ko/victory.glb` returned 404 while all of them were still in `/api/fighters`, i.e. the roster offered fighters that couldn't load. Fixes: (a) baked what was still retrievable into git (optimised files only): **Mama** (freestyle, see §5), **SDK Test** (full rig, 8 clips), **Quack Test** (rig + 5 clips); Kicks Test and `gen-mweoxohh-7015b6` (no model left; the latter's concept is a photoreal person, not baked) are now hidden automatically; (b) `lib/durable.ts` Blob pack store + backfill (see §5); (c) roster hides fighters with a missing model; (d) `SafeModel` boundary in the fight scene and versus preview; (e) `/fight` loads `?all=1` so gallery-only and demo fighters opened by id work (it used to silently swap them for Mug Shot).
+   **Blob store: owner action needed.** `create_storage_stores_blob` (private, `iad1`, name `anything-fighter-fighters`, connect to the project) returned HTTP 500 with outcome unknown at ~13:00 WAT; the project still has no `BLOB_*` env var. In the Vercel dashboard → Storage: if `anything-fighter-fighters` exists, connect it to `anything-fighter` (all environments); otherwise create a **private** Blob store and connect it. Then redeploy. Free on Hobby (1 GB, 2,000 advanced / 10,000 simple ops per month; over the limit Blob pauses, nothing is billed, and the app falls back to Runtime Cache).
+2. **Sample arena card** is always listed again (`lib/arenas-server.ts`); `/api/arenas` falls back to built-ins if listing throws.
+3. **Spend guard:** code default `FORGE_LIMIT_FALLBACK` is now `mock` (prod has it unset, so the next deploy switches prod from 429 to labelled demo forges). Prod values today: `FORGE_IP_DAILY_LIMIT=2`, `FORGE_GLOBAL_DAILY_LIMIT=15`. **Proposed (owner to set; not changed):** IP 2, **global 4/day** 19–30 Nov (worst case ~200 credits/day ≈ 2,200 over the review window), then **2–3/day** through 31 Dec; leave fallback on `mock`. 15/day × ~50 credits could drain the estimated ~2,900 balance in about 4 days. Check the Aholo dashboard balance first.
+4. **Player-visible debug text:** forge errors now show plain-language messages (`lib/player-errors.ts`) with the raw text behind a "Technical details" toggle plus Retry / "Fight with the roster" / "Try another photo"; poll errors no longer echo raw messages or HTTP codes; expired/unknown forge ids show "Forge not found" instead of a frozen "Forging…" panel; `/fight` load failure shows "Couldn't load the fighters" + Try again (was a raw `TypeError` string); gallery has a retry instead of "Loading…" forever; room scan and arena/pipeline API errors are friendly (raw text goes to the server log); the forge name is no longer pre-filled from camera filenames like `1794557018319…` (which is how `gen-mweoxohh-7015b6` got a numeric name).
+**Tests (local, mock mode, no credits):** `npm run lint` clean, `npm run build` OK, `npm run test:durable` OK (pack encode/decode, save, index, cold-instance read, `*.orig.glb` excluded). `next start` on :3217 (no key) and :3218 (dummy key + `FORGE_IP_DAILY_LIMIT=0`, only `/api/pipeline` hit): mock forge end to end; limit hit → `mockReason: "limit"` demo forge, hidden from the roster, fightable by id; arenas list Neon Ring + sample; baked fighters served; Playwright + Chrome (SwiftShader) at 390×844 and 1440×900 on `/`, `/gallery`, `/fight` (Mama vs SDK Test on the sample splat), `/fight` with a missing clip + a corrupt model (both fall back, fight runs), `/forge/<error job>`, `/forge/<unknown id>`, `/forge/<demo job>`: no raw error text. Screenshots: `/workspace/shots/reliability/` on the box.
+
 ### Known future fixes / backlog (logged 13 Nov 2026, 08:35 WAT)
 Not started yet. Move each one into "In progress right now" when you begin it, and into status with its commit and deploy IDs when it's done.
 
 **Arenas / worlds**
-- The Aholo sample splat arena card disappears once any generated world is ready, a side effect of `31af7df`. Keep it always available as a reliable fallback arena.
+- ~~The Aholo sample splat arena card disappears once any generated world is ready~~ done (13 Nov, reliability commit).
 - ~~Verify My Room fight visually~~ done (mobile + desktop, `54d363f`). Kitchen Colosseum panorama card still not eyeballed.
 - ~~Toy Shop / Rooftop Dojo framing~~ done (`45c0017`); check their stage-select preview cards.
 - Duplicate queued worlds `3FO4K4V8IL5L` and `3FO4K4V8IOHM` will spend about 30 credits on worlds we already have. Only Aholo support can cancel them, and only with the owner's approval.
@@ -554,13 +568,14 @@ Not started yet. Move each one into "In progress right now" when you begin it, a
 - `scripts/*.mjs` (offline CLI tools) still use raw REST. Migrate them to the SDKs for consistency with the Manycore-first directive.
 
 **Reliability for judging (demo must stay up until at least 31 Dec 2026)**
-- Confirm forged fighters' assets are persisted somewhere durable, not only behind Lux3D result URLs (which expire after 2 h) or in ephemeral `/tmp`. Check where `/api/fighters` and the pipeline store them.
-- Review the spend guard before judging: `FORGE_IP_DAILY_LIMIT` (2) and `FORGE_GLOBAL_DAILY_LIMIT` (15) against the remaining credits. Judges must not hit a dead end; `FORGE_LIMIT_FALLBACK` decides block versus mock.
+- ~~Durable forged-fighter assets~~ done in code (baked fighters + `lib/durable.ts`); **owner: connect a private Blob store, then deploy** (see "Reliability for judging" above).
+- ~~Spend guard review~~ done: fallback default `mock`; **owner: set the proposed `FORGE_GLOBAL_DAILY_LIMIT`** (see above).
 - Credits can't be read via the API locally. Check the balance on the Aholo dashboard before any batch of live tests.
 
 **UI / game feel**
 - Verify the 2-player single-keyboard mode and the desktop layout after the redesign and the mobile fixes.
-- Look for any remaining debug text (e.g. raw error strings) visible to players across `/`, `/fight`, `/forge/[id]` and `/gallery`.
+- ~~Raw debug/error text visible to players~~ done (13 Nov, reliability commit).
+- Forge page for a demo (mock) forge still ticks the Lux3D stage cards (the banner explains it is simulated); consider greying them.
 
 **Process**
 - Several agents may work in this repo. Stage files by name (never `git add -A`) and `git pull --rebase` before committing.

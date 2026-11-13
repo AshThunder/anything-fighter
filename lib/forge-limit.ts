@@ -15,12 +15,18 @@ import { getRuntimeCache } from "./store";
  * called out as a limitation on Vercel if the cache API is missing.
  *
  * IPs are hashed before storage. Limits do not apply in mock mode (no API key).
+ * When a cap is hit the forge falls back to a labelled mock run (FORGE_LIMIT_FALLBACK, default "mock").
  */
 
 export const IP_DAILY_LIMIT = Number(process.env.FORGE_IP_DAILY_LIMIT ?? 2);
 export const GLOBAL_DAILY_LIMIT = Number(process.env.FORGE_GLOBAL_DAILY_LIMIT ?? 15);
 export type ForgeLimitFallback = "block" | "mock";
-export const FORGE_LIMIT_FALLBACK: ForgeLimitFallback = process.env.FORGE_LIMIT_FALLBACK === "mock" ? "mock" : "block";
+/**
+ * What happens once a cap is hit. Default `mock` (changed 13 Nov 2026 for judging): the forge still runs end to
+ * end as a clearly labelled demo forge (no credits), so a judge never hits a dead end. `block` = HTTP 429 and
+ * "try the roster".
+ */
+export const FORGE_LIMIT_FALLBACK: ForgeLimitFallback = process.env.FORGE_LIMIT_FALLBACK === "block" ? "block" : "mock";
 
 const LIMIT_MESSAGE = "Forge limit reached, try the roster";
 

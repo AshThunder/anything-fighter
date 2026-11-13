@@ -1,0 +1,27 @@
+{
+  "id": "gen-mwel0i8j-076867",
+  "name": "Quack Test",
+  "tagline": "Forged by Aholo Lux3D",
+  "modelUrl": "/api/assets/gen-mwel0i8j-076867/rigged.glb",
+  "animUrls": {
+    "idle": "/api/assets/gen-mwel0i8j-076867/anim-idle.glb",
+    "walk": "/api/assets/gen-mwel0i8j-076867/anim-walk.glb",
+    "kick": "/api/assets/gen-mwel0i8j-076867/anim-kick.glb",
+    "block": "/api/assets/gen-mwel0i8j-076867/anim-block.glb",
+    "hit": "/api/assets/gen-mwel0i8j-076867/anim-hit.glb"
+  },
+  "thumbUrl": "/api/assets/gen-mwel0i8j-076867/thumb.webp",
+  "photoUrl": "/api/assets/gen-mwel0i8j-076867/photo.jpg",
+  "posterUrl": "/api/assets/gen-mwel0i8j-076867/poster.jpg",
+  "color": "#38bdf8",
+  "source": "lux3d",
+  "createdAt": 1794550466899,
+  "services": [
+    "asset",
+    "concept",
+    "mesh",
+    "rig",
+    "retarget",
+    "poster"
+  ]
+}

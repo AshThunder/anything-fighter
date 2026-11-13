@@ -6,6 +6,10 @@ refs
 luxreal
 public/fighters/**/*.orig.glb
 public/fighters/gen-*
+# baked forged fighters (optimised assets only, committed so they survive Runtime Cache eviction)
+!public/fighters/gen-mwejr65q-c81d76/
+!public/fighters/gen-mwemw090-24ff0e/
+!public/fighters/gen-mwel0i8j-076867/
 public/arenas/*/scan.mp4
 .next
 node_modules

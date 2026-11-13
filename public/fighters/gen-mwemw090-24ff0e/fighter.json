@@ -1,0 +1,29 @@
+{
+  "id": "gen-mwemw090-24ff0e",
+  "name": "SDK Test",
+  "tagline": "Forged by Aholo Lux3D",
+  "modelUrl": "/api/assets/gen-mwemw090-24ff0e/rigged.glb",
+  "animUrls": {
+    "idle": "/api/assets/gen-mwemw090-24ff0e/anim-idle.glb",
+    "walk": "/api/assets/gen-mwemw090-24ff0e/anim-walk.glb",
+    "punch": "/api/assets/gen-mwemw090-24ff0e/anim-punch.glb",
+    "kick": "/api/assets/gen-mwemw090-24ff0e/anim-kick.glb",
+    "block": "/api/assets/gen-mwemw090-24ff0e/anim-block.glb",
+    "hit": "/api/assets/gen-mwemw090-24ff0e/anim-hit.glb",
+    "ko": "/api/assets/gen-mwemw090-24ff0e/anim-ko.glb",
+    "victory": "/api/assets/gen-mwemw090-24ff0e/anim-victory.glb"
+  },
+  "thumbUrl": "/api/assets/gen-mwemw090-24ff0e/photo.jpg",
+  "photoUrl": "/api/assets/gen-mwemw090-24ff0e/photo.jpg",
+  "posterUrl": "/api/assets/gen-mwemw090-24ff0e/poster.jpg",
+  "color": "#a3e635",
+  "source": "lux3d",
+  "createdAt": 1794553616196,
+  "services": [
+    "asset",
+    "mesh",
+    "rig",
+    "retarget",
+    "poster"
+  ]
+}
