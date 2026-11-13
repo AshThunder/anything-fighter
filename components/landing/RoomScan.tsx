@@ -15,7 +15,8 @@ interface WorldJobView {
  * POST /api/room → poll GET /api/arenas/<id> → new arena appears in the picker.
  */
 export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a: ArenaDef) => void }) {
-  const ref = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const recRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [job, setJob] = useState<WorldJobView | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -89,16 +90,20 @@ export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a:
           {live ? "Reality API · Flash" : "mock: no key"}
         </span>
       </div>
-      <div className="mt-2 flex items-center gap-2">
-        <button onClick={() => ref.current?.click()} className="btn btn-ghost btn-sm">
-          {files.length ? (video ? `🎥 ${files[0].name.slice(0, 18)}` : `🖼 ${files.length} photos`) : "🎥 Pick video / 20+ photos"}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-ghost btn-sm" data-action="room-upload">
+          {files.length ? (video ? `🎥 ${files[0].name.slice(0, 22)}` : `🖼 ${files.length} photos`) : "Upload video or 20+ photos"}
+        </button>
+        <button type="button" onClick={() => recRef.current?.click()} className="btn btn-ghost btn-sm" data-action="room-record">
+          Record
         </button>
         <button
           disabled={!ok || busy}
           onClick={start}
-          className="btn btn-volt btn-sm disabled:opacity-40"
+          className="btn btn-volt btn-sm disabled:bg-panel-2 disabled:text-dim disabled:shadow-none"
+          data-action="room-build"
         >
-          {busy ? "Scanning…" : "Build arena"}
+          {busy ? "Scanning…" : ok ? "Build arena" : "Pick a video first"}
         </button>
         {job && (
           <span className="text-[11px] text-muted">
@@ -122,10 +127,17 @@ export function RoomScan({ live, onReady }: { live: boolean | null; onReady: (a:
         </p>
       )}
       <input
-        ref={ref}
+        ref={fileRef}
         type="file"
-        accept="video/mp4,video/quicktime,image/*"
+        accept="video/mp4,video/quicktime,video/webm,image/*"
         multiple
+        className="hidden"
+        onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+      />
+      <input
+        ref={recRef}
+        type="file"
+        accept="video/mp4,video/quicktime,video/webm"
         capture="environment"
         className="hidden"
         onChange={(e) => setFiles(Array.from(e.target.files ?? []))}

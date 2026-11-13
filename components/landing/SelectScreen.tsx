@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useRef, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import type { FighterDef } from "@/lib/fighters";
 import { sfx, unlockAudio } from "@/lib/game/audio";
 import { PoweredBy } from "@/components/ui/PoweredBy";
@@ -10,44 +10,84 @@ const VersusPreview = dynamic(() => import("./VersusPreview"), { ssr: false });
 const P1C = "#ff5a1f";
 const P2C = "#22c7ff";
 
-function Portrait({ f, i }: { f: FighterDef; i: number }) {
-  return f.thumbUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={f.thumbUrl}
-      alt=""
-      loading="lazy"
-      draggable={false}
-      className="h-full w-full origin-bottom object-cover animate-[idlebob_2.4s_ease-in-out_infinite]"
-      style={{ animationDelay: `${-(i * 0.37) % 2.4}s` }}
-    />
-  ) : (
-    <span className="flex h-full w-full items-center justify-center font-arcade text-3xl" style={{ color: f.color }}>
-      {f.name.slice(0, 2).toUpperCase()}
-    </span>
-  );
+function portraitSrcs(f: FighterDef): string[] {
+  return [f.thumbUrl, f.posterUrl, f.photoUrl].filter((u): u is string => !!u);
 }
 
-function NamePlate({ f, side, tag }: { f?: FighterDef; side: 0 | 1; tag: string }) {
-  const c = side === 0 ? P1C : P2C;
+function Silhouette({ color }: { color: string }) {
   return (
-    <div className={`pointer-events-none absolute bottom-3 ${side === 0 ? "left-0 pl-3" : "right-0 pr-3 text-right"} max-w-[48%]`}>
-      <div
-        className="inline-block px-3 py-1 font-arcade text-[11px] text-black skew-panel"
-        style={{ background: c, animation: `${side === 0 ? "slidein-l" : "slidein-r"} 0.35s ease-out` }}
-        key={f?.id}
-      >
-        <span>{tag}</span>
-      </div>
-      <div className="mt-1 truncate font-arcade text-lg leading-tight text-fg text-stroke sm:text-2xl">{f?.name ?? "—"}</div>
-      <div className="truncate text-xs text-muted">{f?.tagline}</div>
+    <div className="flex h-full w-full items-center justify-center" style={{ background: `${color}26` }} aria-hidden>
+      <svg viewBox="0 0 64 96" className="h-[80%] w-auto" fill={color} opacity="0.75">
+        <circle cx="32" cy="16" r="10" />
+        <path d="M18 34c0-5 6-9 14-9s14 4 14 9v7c0 3-2 5-5 6l3 30c.4 3.5-2 7-5.5 7h-19c-3.5 0-5.9-3.5-5.5-7l3-30c-3-1-5-3-5-6z" />
+      </svg>
     </div>
   );
 }
 
+function Portrait({ f, i }: { f: FighterDef; i: number }) {
+  const srcs = portraitSrcs(f);
+  const [idx, setIdx] = useState(0);
+  const src = srcs[idx];
+  if (!src) return <Silhouette color={f.color} />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={src}
+      src={src}
+      alt=""
+      loading="lazy"
+      draggable={false}
+      onError={() => setIdx((n) => n + 1)}
+      className="h-full w-full origin-bottom object-cover animate-[idlebob_2.4s_ease-in-out_infinite]"
+      style={{ animationDelay: `${-(i * 0.37) % 2.4}s` }}
+    />
+  );
+}
+
+function PickSlot({
+  side,
+  active,
+  tag,
+  fighter,
+  onSelect,
+}: {
+  side: 0 | 1;
+  active: boolean;
+  tag: string;
+  fighter?: FighterDef;
+  onSelect: () => void;
+}) {
+  const c = side === 0 ? P1C : P2C;
+  return (
+    <button
+      type="button"
+      data-side={side}
+      aria-pressed={active}
+      aria-label={`${tag}: ${fighter?.name ?? "not chosen yet"}${active ? ", currently picking" : ""}`}
+      onClick={onSelect}
+      className="flex min-h-[4.75rem] flex-1 items-center gap-2.5 overflow-hidden rounded-xl border-[3px] bg-panel px-2.5 py-2 text-left transition active:scale-[0.99]"
+      style={{
+        borderColor: active ? c : "var(--color-line-strong)",
+        boxShadow: active ? `0 4px 0 ${c}` : "0 4px 0 #000",
+      }}
+    >
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-panel-2">
+        {fighter ? <Portrait key={fighter.id} f={fighter} i={side} /> : <Silhouette color={c} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <span className="tag" style={{ background: c }}>
+          {tag}
+        </span>
+        <div className="mt-0.5 truncate font-arcade text-sm leading-tight sm:text-base">{fighter?.name ?? "—"}</div>
+      </div>
+    </button>
+  );
+}
+
 /**
- * Character select (screenpack "Select Info" style): live 3D idle preview of both picks over a big portrait grid
- * with P1 / CPU cursors. Tap places the active cursor, then hands over to the other side. Arrow keys move focus.
+ * Character select: two explicit YOU/CPU (or P1/P2) slots, plain-language instructions, a portrait grid
+ * with large side badges, a Random button, and the live 3D versus preview.
  */
 export function SelectScreen({
   fighters,
@@ -69,7 +109,9 @@ export function SelectScreen({
   const grid = useRef<HTMLDivElement>(null);
   const a = fighters.find((f) => f.id === p1);
   const b = fighters.find((f) => f.id === p2);
-  const p2tag = versus === "2p" ? "P2" : "CPU";
+  const youTag = versus === "2p" ? "P1" : "YOU";
+  const oppTag = versus === "2p" ? "P2" : "CPU";
+  const hint = side === 0 ? "Pick your fighter" : versus === "2p" ? "Pick player 2's fighter" : "Pick your opponent";
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const btns = Array.from(grid.current?.querySelectorAll<HTMLButtonElement>("button[data-fighter]") ?? []);
@@ -84,32 +126,41 @@ export function SelectScreen({
     sfx("click");
   };
 
+  const pickRandom = () => {
+    unlockAudio();
+    const exclude = side === 0 ? p2 : p1;
+    const pool = fighters.filter((f) => f.id !== exclude);
+    const list = pool.length ? pool : fighters;
+    if (!list.length) return;
+    pick(side, list[Math.floor(Math.random() * list.length)].id);
+  };
+
   return (
     <section className="flex flex-col gap-3" data-select>
-      <div className="flex items-end justify-between gap-2">
-        <h2 className="arcade-title text-2xl text-fg sm:text-3xl">
-          <span className="text-blaze">2.</span> Select fighter
-        </h2>
-        <div className="flex overflow-hidden rounded-lg border-2 border-line-strong" role="tablist" aria-label="Which side you're picking">
-          {([0, 1] as const).map((s) => (
-            <button
-              key={s}
-              role="tab"
-              aria-selected={side === s}
-              data-side={s}
-              onClick={() => setSide(s)}
-              className={`flex min-h-11 min-w-14 items-center justify-center px-3 font-arcade text-sm transition ${side === s ? "text-ink" : "bg-panel text-muted hover:text-fg"}`}
-              style={side === s ? { background: s === 0 ? P1C : P2C } : undefined}
-            >
-              {s === 0 ? "1P" : p2tag}
-            </button>
-          ))}
-        </div>
+      <h2 className="arcade-title text-2xl text-fg sm:text-3xl">
+        <span className="text-blaze">2.</span> Select fighter
+      </h2>
+
+      <div className="flex gap-2" role="group" aria-label="Chosen fighters">
+        <PickSlot side={0} active={side === 0} tag={youTag} fighter={a} onSelect={() => setSide(0)} />
+        <PickSlot side={1} active={side === 1} tag={oppTag} fighter={b} onSelect={() => setSide(1)} />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="min-h-6 text-base font-semibold text-fg" aria-live="polite" data-pick-hint>
+          {hint}
+          <span className="hidden font-normal text-dim [@media(hover:hover)]:inline">
+            {" "}
+            · arrows + Enter · shift-click / right-click = {oppTag}
+          </span>
+        </p>
+        <button type="button" onClick={pickRandom} className="btn btn-ghost btn-sm" data-action="random">
+          Random
+        </button>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[1.05fr_1fr] lg:items-start">
-        {/* versus stage: both picks idling in 3D; flat split backdrop in the two side colours */}
-        <div className="relative h-[44vh] min-h-[260px] max-h-[440px] overflow-hidden rounded-xl border border-line bg-panel lg:sticky lg:top-20">
+        <div className="relative h-[32vh] min-h-[200px] max-h-[440px] overflow-hidden rounded-xl border border-line bg-panel sm:h-[40vh] lg:sticky lg:top-20 lg:h-[44vh]">
           <div className="absolute inset-y-0 left-0 w-1/2 bg-blaze/10" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-volt/10" />
           <div className="absolute inset-x-0 bottom-0 h-[22%] border-t border-line bg-ink/60" />
@@ -117,66 +168,65 @@ export function SelectScreen({
           <div className="pointer-events-none absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 -rotate-6 font-arcade text-5xl text-gold text-stroke [text-shadow:0_4px_0_#000] sm:text-6xl">
             VS
           </div>
-          <NamePlate f={a} side={0} tag="1P" />
-          <NamePlate f={b} side={1} tag={p2tag} />
+          <div className="pointer-events-none absolute bottom-3 left-3 max-w-[46%]">
+            <span className="tag" style={{ background: P1C }}>
+              {youTag}
+            </span>
+            <div className="mt-1 truncate font-arcade text-lg leading-tight text-fg text-stroke sm:text-2xl">{a?.name ?? "—"}</div>
+          </div>
+          <div className="pointer-events-none absolute bottom-3 right-3 max-w-[46%] text-right">
+            <span className="tag" style={{ background: P2C }}>
+              {oppTag}
+            </span>
+            <div className="mt-1 truncate font-arcade text-lg leading-tight text-fg text-stroke sm:text-2xl">{b?.name ?? "—"}</div>
+          </div>
           {a && <PoweredBy fighter={a} className="pointer-events-none absolute inset-x-3 top-2.5 hidden sm:flex" />}
         </div>
 
-        {/* portrait grid with cursors */}
-        <div>
-          <p className="mb-2 flex min-h-6 items-center gap-1.5 text-sm text-muted" aria-live="polite">
-            Tap a fighter for
-            <span className="tag" style={{ background: side === 0 ? P1C : P2C }}>
-              {side === 0 ? "1P" : p2tag}
-            </span>
-            <span className="hidden text-xs text-dim [@media(hover:hover)]:inline">· arrows + Enter · shift-click / right-click = {p2tag}</span>
-          </p>
-          <div ref={grid} onKeyDown={onKey} className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4" role="listbox" aria-label="Fighters">
-            {fighters.map((f, i) => {
-              const is1 = f.id === p1;
-              const is2 = f.id === p2;
-              const color = is1 ? P1C : is2 ? P2C : undefined;
-              return (
-                <button
-                  key={f.id}
-                  data-fighter={f.id}
-                  role="option"
-                  aria-selected={is1 || is2}
-                  aria-label={`${f.name}${is1 ? ", 1P" : ""}${is2 ? `, ${p2tag}` : ""}`}
-                  onClick={(e) => {
-                    unlockAudio();
-                    pick(e.shiftKey ? 1 : side, f.id);
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    pick(1, f.id);
-                  }}
-                  className={`group relative flex aspect-[3/4] flex-col overflow-hidden rounded-lg border-[3px] bg-panel-2 text-left transition active:scale-95 ${
-                    color ? "" : "border-line hover:border-line-strong"
-                  }`}
-                  style={color ? { borderColor: color, boxShadow: `0 4px 0 ${color}55` } : undefined}
-                >
-                  <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: `${f.color}26` }}>
-                    <Portrait f={f} i={i} />
-                    {is1 && (
-                      <span className="tag absolute left-1 top-1 animate-[cursorpulse_1s_ease-in-out_infinite]" style={{ background: P1C }}>
-                        1P
-                      </span>
-                    )}
-                    {is2 && (
-                      <span className="tag absolute right-1 top-1 animate-[cursorpulse_1s_ease-in-out_infinite]" style={{ background: P2C }}>
-                        {p2tag}
-                      </span>
-                    )}
-                  </div>
-                  <div className="shrink-0 border-t border-line bg-ink px-1.5 py-1.5" style={color ? { background: color } : undefined}>
-                    <div className={`font-arcade text-[11px] leading-tight [overflow-wrap:anywhere] line-clamp-2 sm:text-xs ${color ? "text-ink" : "text-fg"}`}>{f.name}</div>
-                    {f.tagline.includes("freestyle") && <div className={`text-[10px] font-semibold uppercase tracking-wider ${color ? "text-ink/80" : "text-gold"}`}>freestyle</div>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+        <div ref={grid} onKeyDown={onKey} className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4" role="listbox" aria-label="Fighters">
+          {fighters.map((f, i) => {
+            const is1 = f.id === p1;
+            const is2 = f.id === p2;
+            const color = is1 ? P1C : is2 ? P2C : undefined;
+            const badge = is1 ? youTag : is2 ? oppTag : null;
+            return (
+              <button
+                key={f.id}
+                data-fighter={f.id}
+                role="option"
+                aria-selected={is1 || is2}
+                aria-label={`${f.name}${is1 ? `, ${youTag}` : ""}${is2 ? `, ${oppTag}` : ""}`}
+                onClick={(e) => {
+                  unlockAudio();
+                  pick(e.shiftKey ? 1 : side, f.id);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  pick(1, f.id);
+                }}
+                className={`group relative flex aspect-[3/4] flex-col overflow-hidden rounded-lg border-[3px] bg-panel-2 text-left transition active:scale-95 ${
+                  color ? "" : "border-line hover:border-line-strong"
+                }`}
+                style={color ? { borderColor: color, boxShadow: `0 4px 0 ${color}55` } : undefined}
+              >
+                <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: `${f.color}26` }}>
+                  <Portrait f={f} i={i} />
+                  {badge && (
+                    <span
+                      className="tag absolute left-1 top-1 px-1.5 py-1 text-xs sm:text-sm"
+                      style={{ background: color }}
+                    >
+                      {badge}
+                    </span>
+                  )}
+                </div>
+                <div className="shrink-0 border-t border-line bg-ink px-1.5 py-1.5" style={color ? { background: color } : undefined}>
+                  <div className={`font-arcade text-[11px] leading-tight [overflow-wrap:anywhere] line-clamp-2 sm:text-xs ${color ? "text-ink" : "text-fg"}`}>{f.name}</div>
+                  {f.tagline.includes("freestyle") && <div className={`text-[10px] font-semibold uppercase tracking-wider ${color ? "text-ink/80" : "text-gold"}`}>freestyle</div>}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>

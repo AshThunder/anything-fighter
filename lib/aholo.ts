@@ -104,7 +104,7 @@ export interface Job {
   transient?: number;
   retries?: number;
   taskId?: number;
-  options: { mascot: boolean; exportPrint: boolean; prompt?: string };
+  options: { mascot: boolean; exportPrint: boolean; prompt?: string; photoPublic?: boolean };
   /** Remote (Aholo, expiring) URLs. */
   remote: { photo?: string; mascot?: string; mesh?: string; rigged?: string };
   /** Rehosted local files (relative to fighter dir). */
@@ -157,6 +157,8 @@ export async function createJob(input: {
   mascot?: boolean;
   exportPrint?: boolean;
   prompt?: string;
+  /** Explicit opt-in + attestation + client face-gate passed. Never inferred. */
+  photoPublic?: boolean;
   /** Force mock mode even if AHOLO_API_KEY is set (spend-guard fallback). */
   forceMock?: boolean;
 }): Promise<Job> {
@@ -168,7 +170,7 @@ export async function createJob(input: {
     stage: "upload",
     stageStartedAt: Date.now(),
     createdAt: Date.now(),
-    options: { mascot: input.mascot ?? true, exportPrint: input.exportPrint ?? false, prompt: input.prompt },
+    options: { mascot: input.mascot ?? true, exportPrint: input.exportPrint ?? false, prompt: input.prompt, photoPublic: input.photoPublic === true || undefined },
     remote: {},
     files: { anims: {}, exports: {} },
     ...(input.forceMock && !isMockMode() ? { mockReason: "limit" as const } : {}),
@@ -754,9 +756,12 @@ export function jobToFighter(job: Job): FighterDef {
     modelUrl: assetUrl(id, job.files.rigged ?? job.files.statue ?? job.files.mesh ?? "rigged.glb"),
     animUrls: Object.keys(anims).length ? anims : undefined,
     exports: Object.keys(exports).length ? exports : undefined,
-    // never the player's photo (kept private): Lux3D concept, else the RenderCloud poster
+    // thumbs never use the player's photo: Lux3D concept, else the RenderCloud poster
     thumbUrl: job.files.mascot ? assetUrl(id, job.files.mascot) : job.files.poster ? assetUrl(id, job.files.poster) : undefined,
     posterUrl: job.files.poster ? assetUrl(id, job.files.poster) : undefined,
+    // original photo is listed only when the uploader opted in (and the face gate passed) at forge time
+    photoUrl: job.options.photoPublic && job.files.photo ? assetUrl(id, job.files.photo) : undefined,
+    photoPublic: job.options.photoPublic || undefined,
     color: COLORS[parseInt(id.slice(-2), 16) % COLORS.length],
     source: job.mode === "mock" ? "mock" : "lux3d",
     createdAt: job.createdAt,
@@ -780,13 +785,17 @@ export async function listGeneratedFighters(): Promise<FighterDef[]> {
       const raw = await readFighterFile(e, "fighter.json");
       if (!raw) continue;
       const f: FighterDef = JSON.parse(raw.toString("utf8"));
+      if (f.hidden) continue;
       const model = f.modelUrl.match(/\/api\/assets\/[^/]+\/([^/?]+)$/)?.[1];
       if (model && !(await fighterFileProbe(e, model))) continue;
       if (!backfill && durableEnabled() && e.startsWith("gen-") && f.source === "lux3d" && !durable.has(e) && !backfillTried.has(e)) backfill = e;
       const poster = path.join(process.cwd(), "public", "posters", e, "poster.png");
       if (!f.posterUrl && (await fs.stat(poster).catch(() => null))) f.posterUrl = `/api/assets/posters/${e}/poster.png`;
-      // privacy: older fighter.json files listed the player's photo
-      delete f.photoUrl;
+      // privacy: older fighter.json files listed the player's photo; only an explicit photoPublic flag publishes it
+      if (f.photoPublic !== true) {
+        delete f.photoUrl;
+        delete f.photoPublic;
+      }
       if (f.thumbUrl && isPrivateFighterFile(e, f.thumbUrl.split("/").pop() ?? "")) f.thumbUrl = f.posterUrl;
       f.thumbUrl = (await ensureThumb(e, f.thumbUrl)) ?? f.thumbUrl;
       // a concept image evicted before durable storage (seen on "Dial"): fall back to the poster / no thumb
