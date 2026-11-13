@@ -65,6 +65,9 @@ body {
   .btn-volt:active:not(:disabled) { box-shadow: 0 2px 0 var(--color-volt-deep); }
   .btn-ghost { background: var(--color-panel-2); border-color: var(--color-line-strong); color: var(--color-fg); }
   .btn-ghost:hover:not(:disabled) { border-color: var(--color-muted); }
+  .btn-outline { background: var(--color-panel-2); border-color: var(--color-fg); color: var(--color-fg); box-shadow: 0 4px 0 #000; }
+  .btn-outline:hover:not(:disabled) { background: var(--color-panel); }
+  .btn-outline:active:not(:disabled) { box-shadow: 0 2px 0 #000; }
   .btn-outline-volt { background: transparent; border-color: var(--color-volt); color: var(--color-volt); }
   .btn-outline-volt:hover:not(:disabled) { background: rgb(34 199 255 / 0.12); }
   .btn-sm { min-height: 2.75rem; padding: 0 0.75rem; font-size: 0.8125rem; }

@@ -24,13 +24,14 @@ export function ArenaPicker({
   value,
   view,
   onChange,
-  soonExtra,
+  builder,
 }: {
   arenas: ArenaDef[];
   value: string;
   view: ArenaView;
   onChange: (id: string, view: ArenaView) => void;
-  soonExtra?: ReactNode;
+  /** Aholo Reality "Fight in your room" — always visible, not hidden under Coming soon. */
+  builder?: ReactNode;
 }) {
   const [showSoon, setShowSoon] = useState(false);
   const ready = arenas.filter((a) => !a.pending);
@@ -89,7 +90,9 @@ export function ArenaPicker({
         </div>
       )}
 
-      {(soon.length > 0 || soonExtra) && (
+      {builder}
+
+      {soon.length > 0 && (
         <div className="flex flex-col gap-2">
           <button
             onClick={() => setShowSoon((s) => !s)}
@@ -98,9 +101,9 @@ export function ArenaPicker({
             className="flex min-h-12 items-center justify-between rounded-lg border border-line bg-panel px-3 py-2.5 text-left text-sm text-muted hover:border-line-strong"
           >
             <span>
-              <b className="font-arcade text-xs tracking-wide text-gold">Coming soon</b>
+              <b className="font-arcade text-xs tracking-wide text-gold">In Aholo&apos;s queue</b>
               <span className="ml-2">
-                {soon.length} AI world{soon.length === 1 ? "" : "s"} in Aholo&apos;s queue · build your own
+                {soon.length} AI world{soon.length === 1 ? "" : "s"} still generating
               </span>
             </span>
             <span className={`transition ${showSoon ? "rotate-180" : ""}`}>▾</span>
@@ -119,9 +122,8 @@ export function ArenaPicker({
                 ))}
               </ul>
               <p className="text-xs text-dim">
-                Aholo runs one world job at a time per account; these appear as playable arenas the moment they finish.
+                Aholo Reality / SpatialGen runs one world job at a time per account; these appear as playable arenas the moment they finish.
               </p>
-              {soonExtra}
             </div>
           )}
         </div>

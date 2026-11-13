@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { FighterDef } from "@/lib/fighters";
 import { PoweredBy } from "@/components/ui/PoweredBy";
 import { SiteHeader } from "@/components/ui/SiteHeader";
+import { GALLERY_POLICY } from "@/lib/gallery-policy";
 
 const VersusPreview = dynamic(() => import("@/components/landing/VersusPreview"), { ssr: false });
 
@@ -14,6 +15,11 @@ export default function GalleryClient() {
   const [open, setOpen] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [report, setReport] = useState<FighterDef | null>(null);
+  const [reason, setReason] = useState("");
+  const [email, setEmail] = useState("");
+  const [reportState, setReportState] = useState<"idle" | "busy" | "ok" | "err">("idle");
+  const [reportError, setReportError] = useState<string | null>(null);
   useEffect(() => {
     fetch("/api/fighters?all=1")
       .then((r) => r.json())
@@ -32,6 +38,7 @@ export default function GalleryClient() {
             Every fighter here started as one photo. Lux3D re-imagined it, built a PBR mesh, rigged it and retargeted its moves; RenderCloud shot the
             poster. Each card lists the Aholo services that built it.
           </p>
+          <p className="max-w-2xl text-sm text-dim">{GALLERY_POLICY}</p>
         </div>
         {!fighters && !failed && (
           <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading fighters">
@@ -121,11 +128,107 @@ export default function GalleryClient() {
                     {open === f.id ? "Hide 3D" : "View 3D"}
                   </button>
                 </div>
+                <div className="px-3 pb-3">
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-dim underline hover:text-muted"
+                    data-action="report"
+                    onClick={() => {
+                      setReport(f);
+                      setReason("");
+                      setEmail("");
+                      setReportState("idle");
+                      setReportError(null);
+                    }}
+                  >
+                    Report this card
+                  </button>
+                </div>
               </article>
             );
           })}
         </div>
       </div>
+      {report && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/80 p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="report-title" data-report-dialog>
+          <div className="card w-full max-w-md p-4 shadow-[0_8px_0_#000] sm:p-5">
+            <h2 id="report-title" className="font-arcade text-xl">
+              Report {report.name}
+            </h2>
+            <p className="mt-1 text-sm text-muted">Tell us why this card should be taken down (unsolicited photo, someone who didn&apos;t consent, other harm).</p>
+            {reportState === "ok" ? (
+              <p className="mt-3 text-sm text-ok">Thanks. We&apos;ll review it and can hide the fighter or unpublish the photo.</p>
+            ) : (
+              <>
+                <label className="mt-3 block text-sm text-muted" htmlFor="report-reason">
+                  Reason
+                </label>
+                <textarea
+                  id="report-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={4}
+                  className="mt-1 w-full rounded-lg border-2 border-line-strong bg-ink px-3 py-2 text-sm text-fg"
+                />
+                <label className="mt-3 block text-sm text-muted" htmlFor="report-email">
+                  Email (optional, if you want a reply)
+                </label>
+                <input
+                  id="report-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 h-11 w-full rounded-lg border-2 border-line-strong bg-ink px-3 text-sm text-fg"
+                />
+                {reportState === "err" && reportError && (
+                  <p className="mt-2 text-sm text-danger" role="alert">
+                    {reportError}
+                  </p>
+                )}
+              </>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {reportState !== "ok" && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={reportState === "busy"}
+                  onClick={async () => {
+                    setReportState("busy");
+                    setReportError(null);
+                    try {
+                      const res = await fetch(`/api/fighters/${report.id}/report`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ reason, email: email || undefined }),
+                      });
+                      const j = await res.json().catch(() => ({}));
+                      if (!res.ok) {
+                        setReportState("err");
+                        setReportError(j.error ?? "Couldn't send the report.");
+                        return;
+                      }
+                      setReportState("ok");
+                    } catch {
+                      setReportState("err");
+                      setReportError("Couldn't reach the server.");
+                    }
+                  }}
+                >
+                  {reportState === "busy" ? "Sending…" : "Send report"}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setReport(null)}
+              >
+                {reportState === "ok" ? "Close" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -10,6 +10,8 @@ import { SiteHeader } from "@/components/ui/SiteHeader";
 import { ArenaPicker, type ArenaView } from "./ArenaPicker";
 import { RoomScan } from "./RoomScan";
 import { SelectScreen } from "./SelectScreen";
+import { photoHasFace } from "@/lib/face-gate";
+import { GALLERY_POLICY, PHOTO_ATTESTATION } from "@/lib/gallery-policy";
 
 export const CREDIT_LINE = "Built with Aholo Lux3D · SpatialGen · Viewer · Reality · RenderCloud · #Manycorehackathon";
 
@@ -36,6 +38,8 @@ function ForgePanel({ live }: { live: boolean | null }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [exportPrint, setExportPrint] = useState(false);
+  const [sharePhoto, setSharePhoto] = useState(false);
+  const [attested, setAttested] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -46,20 +50,46 @@ function ForgePanel({ live }: { live: boolean | null }) {
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setError(null);
+    setSharePhoto(false);
+    setAttested(false);
     if (!name) setName(nameFromFile(f.name));
   };
 
   const forge = async () => {
     if (!file) return;
+    if (sharePhoto && !attested) {
+      setError("To share your photo, please confirm the statement under the checkbox.");
+      return;
+    }
     unlockAudio();
     sfx("fight");
     setBusy(true);
     setError(null);
+    let share = sharePhoto && attested;
+    if (share) {
+      setError("Checking the photo for faces…");
+      const face = await photoHasFace(file);
+      if (face === "yes") {
+        share = false;
+        setSharePhoto(false);
+        setError("We found a face in this photo, so it can't be shared publicly. Forging anyway — the photo stays private.");
+      } else if (face === "error") {
+        share = false;
+        setSharePhoto(false);
+        setError("Couldn't check the photo for faces, so it will stay private. Forging anyway.");
+      } else {
+        setError(null);
+      }
+    }
+    const blob = await downscale(file);
     const fd = new FormData();
-    fd.set("photo", await downscale(file), "photo.jpg");
+    fd.set("photo", blob, "photo.jpg");
     fd.set("name", name || "Mystery Fighter");
     fd.set("exportPrint", exportPrint ? "1" : "0");
-    let r: { error?: string; job?: { id: string } };
+    fd.set("sharePhoto", share ? "1" : "0");
+    fd.set("photoAttestation", share ? "1" : "0");
+    fd.set("faceClear", share ? "1" : "0");
+    let r: { error?: string; job?: { id: string }; deleteToken?: string };
     try {
       const res = await fetch("/api/pipeline", { method: "POST", body: fd });
       const text = await res.text();
@@ -75,6 +105,13 @@ function ForgePanel({ live }: { live: boolean | null }) {
       setError(r.error ?? "Forge failed to start");
       setBusy(false);
       return;
+    }
+    if (r.deleteToken) {
+      try {
+        sessionStorage.setItem(`af-delete:${r.job.id}`, r.deleteToken);
+      } catch {
+        /* private mode */
+      }
     }
     router.push(`/forge/${r.job.id}`);
   };
@@ -135,7 +172,7 @@ function ForgePanel({ live }: { live: boolean | null }) {
         </div>
       </div>
       <button disabled={!file || busy} onClick={forge} data-action="forge" className="btn btn-primary btn-lg mt-4 h-14 w-full">
-        {busy ? "Forging…" : file ? "Forge it!" : "Pick a photo first"}
+        {busy ? (sharePhoto && attested ? "Checking photo…" : "Forging…") : file ? "Forge it!" : "Pick a photo first"}
       </button>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted">
@@ -146,6 +183,27 @@ function ForgePanel({ live }: { live: boolean | null }) {
           <span className={`h-2 w-2 rounded-full ${live ? "bg-ok" : "bg-gold"}`} />
           {live === null ? "…" : live ? "Aholo live" : "Mock pipeline (no key)"}
         </span>
+      </div>
+      <div className="mt-3 flex flex-col gap-2 rounded-lg border border-line bg-panel-2 p-3" data-share-photo>
+        <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-fg">
+          <input
+            type="checkbox"
+            checked={sharePhoto}
+            onChange={(e) => {
+              setSharePhoto(e.target.checked);
+              if (!e.target.checked) setAttested(false);
+            }}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-[#ff5a1f]"
+          />
+          <span>Share my original photo in the Gallery (off by default)</span>
+        </label>
+        {sharePhoto && (
+          <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-muted">
+            <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#ff5a1f]" />
+            <span>{PHOTO_ATTESTATION}</span>
+          </label>
+        )}
+        <p className="text-xs text-dim">{GALLERY_POLICY}</p>
       </div>
       {error && (
         <p className="mt-2 rounded-lg border border-danger/50 bg-danger/10 px-3 py-2 text-sm text-fg" role="alert">
@@ -274,6 +332,9 @@ export default function Landing() {
               <a href="#select" className="btn btn-ghost">
                 Fight now with the roster ↓
               </a>
+              <Link href="/gallery" className="btn btn-outline">
+                Browse the gallery
+              </Link>
             </div>
           </div>
           <ForgePanel live={mode === null ? null : mode === "live"} />
@@ -295,11 +356,19 @@ export default function Landing() {
               setArena(id);
               setView(v);
             }}
-            soonExtra={<RoomScan live={mode === null ? null : mode === "live"} onReady={onRoomReady} />}
+            builder={<RoomScan live={mode === null ? null : mode === "live"} onReady={onRoomReady} />}
           />
         </section>
 
-        <footer className="border-t border-line py-5 text-center text-xs text-dim">{CREDIT_LINE}</footer>
+        <footer className="border-t border-line py-5 text-center text-xs text-dim">
+          <Link href="/gallery" className="font-semibold text-muted hover:text-fg">
+            Gallery
+          </Link>
+          <span aria-hidden className="mx-2">
+            ·
+          </span>
+          {CREDIT_LINE}
+        </footer>
       </div>
 
       {/* sticky fight bar: mode + FIGHT, thumb-reachable */}

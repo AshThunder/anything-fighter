@@ -63,3 +63,6 @@ luxreal/pack/
 !.env.example
 # players' uploaded photos stay private (only inside the durable Blob bundle)
 public/fighters/gen-*/photo.*
+
+# local moderation queue / runtime data
+.data/
