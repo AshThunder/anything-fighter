@@ -1,0 +1,23 @@
+{
+  "id": "toaster",
+  "name": "Toast Master",
+  "tagline": "Pops up. Knocks down.",
+  "color": "#ef4444",
+  "source": "lux3d",
+  "modelUrl": "/api/assets/toaster/rigged.glb",
+  "animUrls": {
+    "kick": "/api/assets/toaster/anim-kick.glb",
+    "hit": "/api/assets/toaster/anim-hit.glb",
+    "ko": "/api/assets/toaster/anim-ko.glb",
+    "block": "/api/assets/toaster/anim-block.glb",
+    "walk": "/api/assets/toaster/anim-walk.glb",
+    "punch2": "/api/assets/toaster/anim-punch2.glb",
+    "victory": "/api/assets/toaster/anim-victory.glb",
+    "hit2": "/api/assets/toaster/anim-hit2.glb",
+    "idle": "/api/assets/toaster/anim-idle.glb",
+    "punch": "/api/assets/toaster/anim-punch.glb"
+  },
+  "thumbUrl": "/api/assets/toaster/mascot.png",
+  "photoUrl": "/api/assets/toaster/photo.png",
+  "createdAt": 1794527477060
+}

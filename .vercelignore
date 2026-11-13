@@ -1,0 +1,12 @@
+# Local-only / bulky artefacts — starter roster GLBs stay (they are git-tracked).
+screens
+perf
+logs
+refs
+luxreal
+public/fighters/**/*.orig.glb
+public/fighters/gen-*
+public/arenas/*/scan.mp4
+.next
+node_modules
+.env*

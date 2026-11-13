@@ -1,0 +1,14 @@
+{
+  "id": "test-1",
+  "name": "Hydro Hydrant",
+  "tagline": "First real Lux3D E2E test",
+  "modelUrl": "/api/assets/test-1/rigged.glb",
+  "animUrls": {
+    "idle": "/api/assets/test-1/anim-idle.glb",
+    "punch": "/api/assets/test-1/anim-punch.glb"
+  },
+  "thumbUrl": "/api/assets/test-1/mascot.png",
+  "color": "#ef4444",
+  "source": "lux3d",
+  "createdAt": 1794526320655
+}

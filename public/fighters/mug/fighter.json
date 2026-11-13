@@ -1,0 +1,23 @@
+{
+  "id": "mug",
+  "name": "Mug Shot",
+  "tagline": "Fully caffeinated. Zero chill.",
+  "color": "#f59e0b",
+  "source": "lux3d",
+  "modelUrl": "/api/assets/mug/rigged.glb",
+  "animUrls": {
+    "ko": "/api/assets/mug/anim-ko.glb",
+    "kick": "/api/assets/mug/anim-kick.glb",
+    "block": "/api/assets/mug/anim-block.glb",
+    "punch": "/api/assets/mug/anim-punch.glb",
+    "punch2": "/api/assets/mug/anim-punch2.glb",
+    "victory": "/api/assets/mug/anim-victory.glb",
+    "walk": "/api/assets/mug/anim-walk.glb",
+    "idle": "/api/assets/mug/anim-idle.glb",
+    "hit2": "/api/assets/mug/anim-hit2.glb",
+    "hit": "/api/assets/mug/anim-hit.glb"
+  },
+  "thumbUrl": "/api/assets/mug/mascot.png",
+  "photoUrl": "/api/assets/mug/photo.png",
+  "createdAt": 1794527477231
+}
