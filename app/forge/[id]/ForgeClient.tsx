@@ -78,6 +78,7 @@ export default function ForgeClient() {
 
   const [loop, setLoop] = useState(0); // bump to restart polling (after a manual retry)
   const [lost, setLost] = useState(false);
+  const [gone, setGone] = useState(false); // finished, but its 3D model was lost from storage
 
   /**
    * Poll loop. Each GET advances the job server-side, so polling must never silently stop: the old version
@@ -104,7 +105,7 @@ export default function ForgeClient() {
         const to = setTimeout(() => ctrl.abort(), 75_000);
         const r = await fetch(`/api/pipeline/${id}`, { cache: "no-store", signal: ctrl.signal }).finally(() => clearTimeout(to));
         const text = await r.text();
-        let j: { job?: JobView; fighter?: FighterDef | null; error?: string };
+        let j: { job?: JobView; fighter?: FighterDef | null; modelMissing?: boolean; error?: string };
         try {
           j = JSON.parse(text);
         } catch {
@@ -122,6 +123,7 @@ export default function ForgeClient() {
         setJob(j.job);
         if (j.fighter) {
           setFighter(j.fighter);
+          setGone(!!j.modelMissing);
           stopped = true;
           return;
         }
@@ -224,7 +226,12 @@ export default function ForgeClient() {
               <div key={i} className="relative aspect-square w-1/2 overflow-hidden rounded-2xl border border-orange-300/15 bg-black/40 md:w-full">
                 {src ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={src} alt={i ? "fighter concept" : "your photo"} className="h-full w-full object-cover" />
+                  <img
+                    src={src}
+                    alt={i ? "fighter concept" : "your photo"}
+                    className="h-full w-full object-cover"
+                    onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-xs text-orange-200/40">{i ? "concept art incoming…" : "…"}</div>
                 )}
@@ -235,10 +242,10 @@ export default function ForgeClient() {
             ))}
           </div>
 
-          <div className="flex flex-col gap-4 rounded-2xl border border-orange-300/15 bg-[#1a1511]/80 p-5" data-forge>
+          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-orange-300/15 bg-[#1a1511]/80 p-5" data-forge>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h1 className="font-display text-3xl font-black italic">
-                {lost ? "Forge not found" : fighter ? `${fighter.name} is ready!` : job?.error ? "Forge hit a snag" : `Forging ${job?.name ?? "your fighter"}…`}
+              <h1 className="min-w-0 font-display text-3xl font-black italic [overflow-wrap:anywhere]">
+                {lost ? "Forge not found" : fighter && gone ? `${fighter.name} is no longer available` : fighter ? `${fighter.name} is ready!` : job?.error ? "Forge hit a snag" : `Forging ${job?.name ?? "your fighter"}…`}
               </h1>
               <span className={`text-xs text-orange-200/60 ${lost ? "hidden" : ""}`}>
                 {job?.mode === "mock" ? (job.mockReason === "limit" ? "demo forge (no credits)" : "mock pipeline (no API key)") : "live Aholo Lux3D"} · {elapsed}s
@@ -337,15 +344,30 @@ export default function ForgeClient() {
                 below or leave this page open and come back.
               </p>
             )}
-            {fighter && job?.rigless && (
+            {fighter && gone && (
+              <p className="rounded-xl border border-orange-300/20 bg-black/30 p-3 text-sm text-orange-100/80" data-notice="model-missing">
+                {fighter.name}&apos;s 3D files are no longer stored, so it can&apos;t fight any more. Forge it again from a new photo, or pick
+                a fighter from the roster.
+              </p>
+            )}
+            {fighter && !gone && job?.rigless && (
               <p className="text-xs text-orange-200/70">
                 Lux3D&apos;s auto-rig couldn&apos;t find a humanoid skeleton in this shape, so {fighter.name} fights freestyle: the full
                 Lux3D mesh, animated with procedural lunges, spins and hops. Try a photo with a clearer body shape for full rigged moves.
               </p>
             )}
-            {fighter ? (
+            {fighter && gone ? (
               <div className="flex flex-wrap gap-3">
-                <Link href={`/fight?p1=${fighter.id}`} className="rounded-xl bg-orange-500 px-6 py-3 font-display text-lg font-black italic text-black hover:bg-orange-400" data-action="fight-new">
+                <Link href="/" className="rounded-xl bg-orange-500 px-6 py-3 font-display text-lg font-black italic text-black hover:bg-orange-400" data-action="forge-again">
+                  FORGE A NEW FIGHTER
+                </Link>
+                <Link href="/fight" className="rounded-xl border border-orange-300/30 px-5 py-3 font-display">
+                  Fight with the roster
+                </Link>
+              </div>
+            ) : fighter ? (
+              <div className="flex flex-wrap gap-3">
+                <Link href={`/fight?p1=${fighter.id}`} className="rounded-xl bg-orange-500 px-6 py-3 font-display text-lg font-black italic text-black [overflow-wrap:anywhere] hover:bg-orange-400" data-action="fight-new">
                   FIGHT WITH {fighter.name.toUpperCase()}!
                 </Link>
                 <Link href="/gallery" className="rounded-xl border border-orange-300/30 px-5 py-3 font-display">
@@ -372,7 +394,7 @@ export default function ForgeClient() {
           <section className="relative h-[62vh] min-h-[380px] overflow-hidden rounded-2xl border border-orange-300/15" data-practice>
             {ready && <GameScene />}
             {ready && <Hud />}
-            {fighter && (
+            {fighter && !gone && (
               <div className="absolute inset-x-0 top-14 flex justify-center">
                 <Link href={`/fight?p1=${fighter.id}`} className="animate-[pop_0.4s_ease-out] rounded-xl bg-lime-400 px-5 py-2 font-display font-black text-black shadow-2xl">
                   ✓ {fighter.name} is ready — fight for real →

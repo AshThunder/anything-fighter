@@ -23,6 +23,7 @@ export default function FightClient() {
   const ready = useGame((s) => !!s.fighters);
   const [err, setErr] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -45,6 +46,9 @@ export default function FightClient() {
         const pool = roster.length >= 2 ? roster : all;
         const a = all.find((f) => f.id === p1) ?? pool[0];
         const b = all.find((f) => f.id === p2 && f.id !== a.id) ?? pool.find((f) => f.id !== a.id) ?? all.find((f) => f.id !== a.id) ?? PLACEHOLDER_FIGHTERS[0];
+        // a fighter opened by id whose files are gone (old forge, lost before durable storage): say so instead of a silent swap
+        const gone = [p1, p2].filter((id) => id && !all.some((f) => f.id === id)).length;
+        setNotice(gone ? `${gone > 1 ? "Those fighters are" : "That fighter is"} no longer available, so we picked from the roster.` : null);
         const ar = arenas.find((x) => x.id === arena);
         const dbg = debugSplat();
         const spec: ArenaSpec = dbg
@@ -83,6 +87,15 @@ export default function FightClient() {
     <main className="relative h-dvh w-full overflow-hidden bg-[#0d0b09]">
       {ready && <GameScene />}
       {ready && <Hud />}
+      {ready && notice && (
+        <button
+          onClick={() => setNotice(null)}
+          className="absolute left-1/2 top-16 z-20 max-w-[90vw] -translate-x-1/2 rounded-lg bg-black/70 px-3 py-1.5 text-xs text-orange-100/90"
+          data-notice="fighter-missing"
+        >
+          {notice} ✕
+        </button>
+      )}
       {!ready && (
         <div className="flex h-full flex-col items-center justify-center gap-3 font-display text-orange-200/70">
           {err ?? "Loading fighters…"}
