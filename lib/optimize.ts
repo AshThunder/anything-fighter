@@ -6,7 +6,8 @@
  */
 import { NodeIO, type Document } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
-import { dedup, prune, textureCompress } from "@gltf-transform/functions";
+import { dedup, prune, simplify, textureCompress, weld } from "@gltf-transform/functions";
+import { MeshoptSimplifier } from "meshoptimizer";
 import sharp from "sharp";
 
 const io = () => new NodeIO().registerExtensions(ALL_EXTENSIONS);
@@ -41,5 +42,13 @@ export async function stripToAnimation(src: string, dst: string, clipName?: stri
 export async function shrinkTextures(src: string, dst: string, maxTex = 1024) {
   const doc = await io().read(src);
   await doc.transform(dedup(), textureCompress({ encoder: sharp, resize: [maxTex, maxTex] }), prune());
+  await io().write(dst, doc);
+}
+
+/** Weld duplicate vertices and simplify to `ratio` of the triangles (cleaner topology for auto-rig). */
+export async function weldSimplify(src: string, dst: string, ratio = 0.5) {
+  await MeshoptSimplifier.ready;
+  const doc = await io().read(src);
+  await doc.transform(weld(), simplify({ simplifier: MeshoptSimplifier, ratio, error: 0.001 }), prune());
   await io().write(dst, doc);
 }
