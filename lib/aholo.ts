@@ -233,7 +233,9 @@ export interface Job {
   /** Remote (Aholo, expiring) URLs. */
   remote: { photo?: string; mascot?: string; mesh?: string; rigged?: string };
   /** Rehosted local files (relative to fighter dir). */
-  files: { photo?: string; mascot?: string; mesh?: string; rigged?: string; anims: Partial<Record<Move, string>>; exports: Record<string, string> };
+  files: { photo?: string; mascot?: string; mesh?: string; rigged?: string; statue?: string; anims: Partial<Record<Move, string>>; exports: Record<string, string> };
+  /** Lux3D auto-rig refused the mesh (RIG_ELIGIBILITY_FAILED): the fighter uses the unrigged mesh + procedural moves. */
+  rigless?: boolean;
   /** Retarget actions still to download + strip (processed one per poll so a 60s Hobby function can finish). */
   pendingAnims?: { move: Move; url: string }[];
   log: string[];
@@ -301,7 +303,22 @@ const locks = new Set<string>();
 export async function advanceJob(id: string): Promise<Job> {
   const job = await loadJob(id);
   if (!job) throw new AholoError("Job not found", "NOT_FOUND", 404);
-  if (job.stage === "done" || job.error || locks.has(id)) return job;
+  if (locks.has(id) || job.stage === "done") return job;
+  if (job.error) {
+    // Jobs that died on an ineligible rig before the fallback existed: finish them freestyle (no credits).
+    if (!canRiglessFallback(job, job.error)) return job;
+    locks.add(id);
+    try {
+      await finishRigless(job, job.error);
+    } catch (e) {
+      job.log.push(`[rig] freestyle fallback failed: ${e instanceof Error ? e.message : e}`);
+      job.rigless = false;
+    } finally {
+      await saveJob(job);
+      locks.delete(id);
+    }
+    return job;
+  }
   locks.add(id);
   try {
     if (job.mode === "mock") await advanceMock(job);
@@ -309,6 +326,15 @@ export async function advanceJob(id: string): Promise<Job> {
     job.transient = 0;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    if (canRiglessFallback(job, msg)) {
+      try {
+        await finishRigless(job, msg);
+        return job;
+      } catch (e2) {
+        job.log.push(`[rig] freestyle fallback failed: ${e2 instanceof Error ? e2.message : e2}`);
+        job.rigless = false;
+      }
+    }
     const transient =
       (e instanceof AholoError && (e.status === 429 || (e.status ?? 0) >= 500)) ||
       (e instanceof TypeError && /fetch|network|terminated|socket/i.test(msg)) ||
@@ -498,6 +524,35 @@ async function processPendingAnims(job: Job) {
   }
 }
 
+const RIG_INELIGIBLE = /RIG_ELIGIBILITY|eligibility/i;
+
+function canRiglessFallback(job: Job, msg: string) {
+  return job.mode === "live" && job.stage === "rig" && !!job.files.mesh && job.rigless === undefined && RIG_INELIGIBLE.test(msg);
+}
+
+/**
+ * Lux3D's humanoid auto-rig rejects some meshes (RIG_ELIGIBILITY_FAILED: proportions/pose it can't map to a
+ * skeleton). Instead of a dead end, ship the textured Lux3D mesh as a "freestyle" fighter: the game already
+ * animates unrigged models procedurally (lunges, spins, hops). No extra credits.
+ */
+async function finishRigless(job: Job, reason: string) {
+  job.rigless = true; // marks the attempt (also prevents loops if optimisation throws)
+  const raw = await readFighterFile(job.id, job.files.mesh!);
+  if (!raw) throw new AholoError("Mesh missing from job store");
+  await fs.mkdir(fighterDir(job.id), { recursive: true });
+  const inPath = path.join("/tmp", `af-${job.id}-mesh.in.glb`);
+  const outPath = path.join(fighterDir(job.id), "statue.glb");
+  await fs.writeFile(inPath, raw);
+  await optimizeFighterGlb(inPath, outPath);
+  await writeFighterFile(job.id, "statue.glb", await fs.readFile(outPath));
+  await fs.unlink(inPath).catch(() => {});
+  job.files.statue = "statue.glb";
+  job.error = undefined;
+  job.transient = 0;
+  job.log.push(`[rig] Lux3D rig refused this shape (${reason.slice(0, 120)}), fighting freestyle with the unrigged mesh`);
+  await finish(job);
+}
+
 async function advanceMock(job: Job) {
   if (Date.now() - job.stageStartedAt < MOCK_STAGE_MS) return;
   const order: Stage[] = ["upload", "mascot", "mesh", "rig", "retarget", "export", "done"];
@@ -532,11 +587,13 @@ export function jobToFighter(job: Job): FighterDef {
   return {
     id,
     name: job.name,
-    tagline: job.mode === "mock" ? "Mock pipeline fighter (no API key yet)" : "Forged by Aholo Lux3D",
-    modelUrl: assetUrl(id, job.files.rigged ?? job.files.mesh ?? "rigged.glb"),
+    tagline:
+      job.mode === "mock" ? "Mock pipeline fighter (no API key yet)" : job.rigless ? "Lux3D mesh, too wild to rig: fights freestyle" : "Forged by Aholo Lux3D",
+    modelUrl: assetUrl(id, job.files.rigged ?? job.files.statue ?? job.files.mesh ?? "rigged.glb"),
     animUrls: Object.keys(anims).length ? anims : undefined,
     exports: Object.keys(exports).length ? exports : undefined,
     thumbUrl: job.files.mascot ? assetUrl(id, job.files.mascot) : job.files.photo ? assetUrl(id, job.files.photo) : undefined,
+    photoUrl: job.files.photo ? assetUrl(id, job.files.photo) : undefined,
     color: COLORS[parseInt(id.slice(-2), 16) % COLORS.length],
     source: job.mode === "mock" ? "mock" : "lux3d",
     createdAt: job.createdAt,
