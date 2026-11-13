@@ -516,6 +516,15 @@ Also gitignored and therefore not in the repo: `public/vendor/` (rebuilt by `npm
 
 ---
 
+### In progress right now (13 Nov 2026, 08:31 WAT): fight-screen fixes on mobile
+These come from the owner's phone screenshots (Android Chrome, portrait, about 390 px wide) of prod fights. Uncommitted work is in `components/game/Effects.tsx`, `Fighter.tsx` and `Hud.tsx`.
+1. **Splat arena fails to load on mobile.** The bottom-left shows `splat failed: TypeError: Failed to fetch`, so the backdrop is empty. Suspects: the signed-URL redirect from `/api/assets` to Aholo (CORS on the redirected cross-origin URL, an expired signature, the viewer worker not following redirects) or the 5.5 MB fetch on mobile. Goal: reliable loading, a retry, a fallback backdrop, and no raw error text shown to players.
+2. **Splat framing (Kitchen Colosseum, My Room).** When it does load, the camera is pressed against an extreme close-up of a blurry wall. Fix: compute the splat bounds, center and ground height, fix the up-axis, place the fighters on the floor near the scene center, add per-arena overrides in the arenas config, and tune them from headless screenshots at 390x844 and 1440x900.
+3. **Fighters too large and close.** They are clipped at the left and right edges in portrait. Fix: a dynamic camera fitted to the aspect ratio that tracks the fighters' midpoint and zooms with their separation, so both always stay full-body in frame.
+4. **Broken hit flash.** A hit fighter (e.g. Mug Shot) renders as a flat, washed-out cream ghost. The material or emissive override is probably not being restored, or it's a transparency issue. Fix: a brief tint, then restore the original materials.
+5. **Mobile controls overflow.** The PUNCH button is cut off at the right edge, so the control dock needs to fit within 390 px.
+None of this needs Aholo credits or world jobs. When it lands, move this block into "Current status" with the commit and deploy IDs.
+
 ## 10. Roadmap / next steps
 
 Do these in roughly this order unless the owner directs otherwise.
