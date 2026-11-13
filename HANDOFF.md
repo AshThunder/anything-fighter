@@ -531,6 +531,34 @@ These come from the owner's phone screenshots (Android Chrome, portrait, about 3
 - (5) `Hud.tsx` TouchPad: 56 px d-pad + diamond (Kick / Block / 72 px Punch) with safe-area padding, ~270 px total.
 None of this needs Aholo credits or world jobs. When it lands, move this block into "Current status" with the commit and deploy IDs.
 
+### Known future fixes / backlog (logged 13 Nov 2026, 08:35 WAT)
+Not started yet. Move each one into "In progress right now" when you begin it, and into status with its commit and deploy IDs when it's done.
+
+**Arenas / worlds**
+- The Aholo sample splat arena card disappears once any generated world is ready, a side effect of `31af7df`. Keep it always available as a reliable fallback arena.
+- Verify the My Room (Reality scan, `3FO4K4V8HJDA`) fight visually on mobile and desktop. It has never been eyeballed, and neither has the Kitchen Colosseum panorama card.
+- Toy Shop (`3FO4K4V8H9C7`) and Rooftop Dojo (`3FO4K4V8HCO8`) are still in Aholo's queue. When they succeed, check that they appear automatically, then tune their framing overrides and preview cards.
+- Duplicate queued worlds `3FO4K4V8IL5L` and `3FO4K4V8IOHM` will spend about 30 credits on worlds we already have. Only Aholo support can cancel them, and only with the owner's approval.
+
+**Forge pipeline**
+- After the SDK migration, a full live forge *including the concept (multimodal-to-image) step* has not been run. The verification forge skipped it to save credits. Test one end to end, photo to poster.
+- `multiFormatExport` (the "printable STL / 3MF" checkbox) runs through the SDK but has never been tested live.
+- `imageToFourView` → multi-view `imgTo3d` (G1) is available but unused. It might improve mesh quality; test once and compare cost.
+- `scripts/*.mjs` (offline CLI tools) still use raw REST. Migrate them to the SDKs for consistency with the Manycore-first directive.
+
+**Reliability for judging (demo must stay up until at least 31 Dec 2026)**
+- Confirm forged fighters' assets are persisted somewhere durable, not only behind Lux3D result URLs (which expire after 2 h) or in ephemeral `/tmp`. Check where `/api/fighters` and the pipeline store them.
+- Review the spend guard before judging: `FORGE_IP_DAILY_LIMIT` (2) and `FORGE_GLOBAL_DAILY_LIMIT` (15) against the remaining credits. Judges must not hit a dead end; `FORGE_LIMIT_FALLBACK` decides block versus mock.
+- Credits can't be read via the API locally. Check the balance on the Aholo dashboard before any batch of live tests.
+
+**UI / game feel**
+- Verify the 2-player single-keyboard mode and the desktop layout after the redesign and the mobile fixes.
+- Look for any remaining debug text (e.g. raw error strings) visible to players across `/`, `/fight`, `/forge/[id]` and `/gallery`.
+
+**Process**
+- Several agents may work in this repo. Stage files by name (never `git add -A`) and `git pull --rebase` before committing.
+- Before killing a dev server, check which agent owns it. A stray `next-server` (PID 51554) was killed by mistake on 13 Nov.
+
 ## 10. Roadmap / next steps
 
 Do these in roughly this order unless the owner directs otherwise.
