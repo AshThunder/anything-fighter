@@ -1,0 +1,28 @@
+{
+  "id": "rooftop-dojo",
+  "prompt": "A martial arts dojo platform on a city rooftop at sunset, open empty wooden floor in the centre, low railings, paper lanterns, distant skyscraper skyline, golden orange sky, cinematic, game arena",
+  "startedAt": "2026-11-13T00:25:50.935Z",
+  "steps": [
+    {
+      "name": "world generation create",
+      "startedAt": "2026-11-13T00:25:50.936Z",
+      "ms": 1283
+    },
+    {
+      "name": "world generation (poll to SUCCEEDED)",
+      "startedAt": "2026-11-13T00:25:52.220Z",
+      "taskId": "3FO4K4V8HCO8",
+      "statusChanges": [
+        {
+          "t": 361,
+          "status": "PENDING",
+          "progress": 0
+        }
+      ],
+      "ms": 87819,
+      "error": "fetch failed"
+    }
+  ],
+  "worldId": "3FO4K4V8HCO8",
+  "finishedAt": "2026-11-13T00:27:20.040Z"
+}

@@ -1,0 +1,49 @@
+{
+  "id": "my-room",
+  "quality": "low",
+  "ids": [
+    "3FO4K4V8HJDA"
+  ],
+  "startedAt": "2026-11-13T04:08:02.893Z",
+  "steps": [
+    {
+      "name": "upload video (18.4 MB, OUS block upload)",
+      "startedAt": "2026-11-13T04:08:02.998Z",
+      "ms": 6715
+    },
+    {
+      "name": "reconstruction create",
+      "startedAt": "2026-11-13T04:08:09.715Z",
+      "taskId": "3FO4K4V8IOHM",
+      "ms": 2522
+    },
+    {
+      "name": "reconstruction (poll to SUCCEEDED)",
+      "startedAt": "2026-11-13T04:08:12.239Z",
+      "taskIds": [
+        "3FO4K4V8HJDA",
+        "3FO4K4V8IOHM"
+      ],
+      "statusChanges": [
+        {
+          "worldId": "3FO4K4V8HJDA",
+          "at": "2026-11-13T04:08:12.963Z",
+          "status": "PENDING",
+          "progress": 0,
+          "updateTime": 1794527405000
+        },
+        {
+          "worldId": "3FO4K4V8IOHM",
+          "at": "2026-11-13T04:08:13.641Z",
+          "status": "PENDING",
+          "progress": 0,
+          "updateTime": 1794542891000
+        }
+      ]
+    }
+  ],
+  "worldIds": [
+    "3FO4K4V8HJDA",
+    "3FO4K4V8IOHM"
+  ]
+}

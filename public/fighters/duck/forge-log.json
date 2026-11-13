@@ -1,0 +1,89 @@
+{
+  "id": "duck",
+  "object": "a classic yellow rubber bath duck with an orange beak",
+  "resumed": true,
+  "startedAt": "2026-11-12T23:52:08.729Z",
+  "steps": [
+    {
+      "name": "source photo (multimodal-to-image, text only)",
+      "startedAt": "2026-11-12T23:52:08.729Z",
+      "prompt": "Studio product photo of a classic yellow rubber bath duck with an orange beak, single object centred, full object visible, plain white background, soft even lighting, photorealistic, no text, no people.",
+      "taskId": "6933081",
+      "ms": 3111
+    },
+    {
+      "name": "mascot (multimodal-to-image, img+prompt)",
+      "startedAt": "2026-11-12T23:52:11.841Z",
+      "taskId": "6933122",
+      "ms": 834
+    },
+    {
+      "name": "img-to-3d G1-Turbo",
+      "startedAt": "2026-11-12T23:52:12.676Z",
+      "taskId": "6933159",
+      "ms": 503
+    },
+    {
+      "name": "humanoid auto-rig",
+      "startedAt": "2026-11-12T23:52:13.180Z",
+      "taskId": "6933185",
+      "ms": 4168
+    },
+    {
+      "name": "retarget 10 presets (separate, in place)",
+      "startedAt": "2026-11-12T23:52:17.348Z",
+      "taskId": "6933218",
+      "actions": [
+        {
+          "id": "Idle_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Walk_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Jab",
+          "status": "success"
+        },
+        {
+          "id": "Melee_Hook",
+          "status": "success"
+        },
+        {
+          "id": "Sword_Block",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Chest",
+          "status": "success"
+        },
+        {
+          "id": "Death01",
+          "status": "success"
+        },
+        {
+          "id": "Dance_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Cross",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Knockback",
+          "status": "success"
+        }
+      ],
+      "ms": 11954
+    },
+    {
+      "name": "optimise fighter GLB",
+      "startedAt": "2026-11-12T23:52:29.302Z",
+      "bytes": 2768152,
+      "ms": 664
+    }
+  ],
+  "finishedAt": "2026-11-12T23:52:29.967Z",
+  "totalMs": 21238
+}

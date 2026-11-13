@@ -1,0 +1,30 @@
+{
+  "id": "my-room",
+  "quality": "low",
+  "startedAt": "2026-11-12T23:49:46.667Z",
+  "steps": [
+    {
+      "name": "upload video (18.4 MB, OUS block upload)",
+      "startedAt": "2026-11-12T23:49:46.698Z",
+      "ms": 8019
+    },
+    {
+      "name": "reconstruction create",
+      "startedAt": "2026-11-12T23:49:54.718Z",
+      "ms": 1414
+    },
+    {
+      "name": "reconstruction (poll to SUCCEEDED)",
+      "startedAt": "2026-11-12T23:49:56.133Z",
+      "taskId": "3FO4K4V8HJDA",
+      "statusChanges": [
+        {
+          "t": 377,
+          "status": "PENDING",
+          "progress": 0
+        }
+      ]
+    }
+  ],
+  "worldId": "3FO4K4V8HJDA"
+}

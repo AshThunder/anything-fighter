@@ -1,0 +1,76 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+)
+
+def Xform "World"
+{
+    def Xform "Fighter"
+    {
+        matrix4d xformOp:transform = ((0.90631, -0.42262, 0, 0), (0.42262, 0.90631, 0, 0), (0, 0, 1, 0), (0, 0, 900, 1))
+        uniform token[] xformOpOrder = ["xformOp:transform"]
+        def Mesh "Geom" (
+            payload = @manycore:/mesh/Y3EIPZMTQYC5GPTUKQ888888@</mesh>
+        ) {}
+    }
+    def Xform "Extra0"
+    {
+        matrix4d xformOp:transform = ((1000, 0, 0, 0), (0, 1000, 0, 0), (0, 0, 1000, 0), (0, 0, 3500, 1))
+        uniform token[] xformOpOrder = ["xformOp:transform"]
+        def Mesh "Geom" (
+            payload = @manycore:/mesh/Y3EKWZBVAJASIPTULE888888@</mesh>
+        ) {}
+    }
+    def Xform "Cameras"
+    {
+        def Camera "MainCamera"
+        {
+            float2 clippingRange = (10, 200000)
+            float focalLength = 50
+            float fStop = 0
+            float horizontalAperture = 24
+            float verticalAperture = 30
+            token projection = "perspective"
+            matrix4d xformOp:transform = ((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, -4200, 1000, 1))
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+    }
+    def Xform "Lights"
+    {
+        def RectLight "Key"
+        {
+            float inputs:width = 1500
+            float inputs:height = 1500
+            color3f inputs:color = (1, 0.92, 0.85)
+            float inputs:intensity = 400
+            matrix4d xformOp:transform = ((0.76339, 0.64594, 0, 0), (-0.26035, 0.30769, 0.91517, 0), (0.59115, -0.69863, 0.40306, 0), (2200, -2600, 2600, 1))
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+        def SphereLight "RimA"
+        {
+            float inputs:radius = 150
+            color3f inputs:color = (1, 0.45, 0.05)
+            float inputs:intensity = 4000
+            matrix4d xformOp:transform = ((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (-1600, 1000, 2000, 1))
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+        def SphereLight "RimB"
+        {
+            float inputs:radius = 150
+            color3f inputs:color = (0.2, 0.6, 1)
+            float inputs:intensity = 4000
+            matrix4d xformOp:transform = ((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (1600, 1000, 1600, 1))
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+    }
+}
+
+def Scope "Render"
+{
+    def RenderSettings "MainRenderSettings"
+    {
+        rel camera = </World/Cameras/MainCamera>
+        int2 resolution = (1080, 1350)
+        custom float3 manycore:environment:giIntensity = (0.6, 0.6, 0.6)
+    }
+}

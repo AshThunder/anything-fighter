@@ -1,0 +1,15 @@
+{
+  "id": "mug",
+  "res": "1080x1350",
+  "meshId": "Y3EIPZMTQYC5GPTUKQ888888",
+  "startedAt": "2026-11-13T00:21:47.203Z",
+  "steps": [
+    {
+      "name": "offline render 1080x1350 (v5)",
+      "startedAt": "2026-11-13T00:21:47.204Z",
+      "taskId": "L1D0S437ENDO7U2AOAUWIOYSLUFX72QYIQ8",
+      "ms": 7897
+    }
+  ],
+  "finishedAt": "2026-11-13T00:21:55.625Z"
+}

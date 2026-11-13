@@ -1,0 +1,88 @@
+{
+  "id": "mug",
+  "object": "a classic glossy white ceramic coffee mug with a bold orange stripe, steam rising",
+  "startedAt": "2026-11-12T23:46:08.123Z",
+  "steps": [
+    {
+      "name": "source photo (multimodal-to-image, text only)",
+      "startedAt": "2026-11-12T23:46:08.123Z",
+      "prompt": "Studio product photo of a classic glossy white ceramic coffee mug with a bold orange stripe, steam rising, single object centred, full object visible, plain white background, soft even lighting, photorealistic, no text, no people.",
+      "taskId": "6933079",
+      "ms": 43111
+    },
+    {
+      "name": "mascot (multimodal-to-image, img+prompt)",
+      "startedAt": "2026-11-12T23:46:51.234Z",
+      "taskId": "6933138",
+      "ms": 41273
+    },
+    {
+      "name": "img-to-3d G1-Turbo",
+      "startedAt": "2026-11-12T23:47:32.508Z",
+      "taskId": "6933176",
+      "ms": 61365
+    },
+    {
+      "name": "humanoid auto-rig",
+      "startedAt": "2026-11-12T23:48:33.873Z",
+      "taskId": "6933190",
+      "ms": 89434
+    },
+    {
+      "name": "retarget 10 presets (separate, in place)",
+      "startedAt": "2026-11-12T23:50:03.307Z",
+      "taskId": "6933225",
+      "actions": [
+        {
+          "id": "Idle_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Walk_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Jab",
+          "status": "success"
+        },
+        {
+          "id": "Melee_Hook",
+          "status": "success"
+        },
+        {
+          "id": "Sword_Block",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Chest",
+          "status": "success"
+        },
+        {
+          "id": "Death01",
+          "status": "success"
+        },
+        {
+          "id": "Dance_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Cross",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Knockback",
+          "status": "success"
+        }
+      ],
+      "ms": 73490
+    },
+    {
+      "name": "optimise fighter GLB",
+      "startedAt": "2026-11-12T23:51:16.800Z",
+      "bytes": 2881612,
+      "ms": 431
+    }
+  ],
+  "finishedAt": "2026-11-12T23:51:17.232Z",
+  "totalMs": 309109
+}

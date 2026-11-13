@@ -1,0 +1,88 @@
+{
+  "id": "sneaker",
+  "object": "a chunky white-and-sky-blue running sneaker with thick sole",
+  "startedAt": "2026-11-12T23:46:08.156Z",
+  "steps": [
+    {
+      "name": "source photo (multimodal-to-image, text only)",
+      "startedAt": "2026-11-12T23:46:08.156Z",
+      "prompt": "Studio product photo of a chunky white-and-sky-blue running sneaker with thick sole, single object centred, full object visible, plain white background, soft even lighting, photorealistic, no text, no people.",
+      "taskId": "6933080",
+      "ms": 39547
+    },
+    {
+      "name": "mascot (multimodal-to-image, img+prompt)",
+      "startedAt": "2026-11-12T23:46:47.704Z",
+      "taskId": "6933128",
+      "ms": 39501
+    },
+    {
+      "name": "img-to-3d G1-Turbo",
+      "startedAt": "2026-11-12T23:47:27.205Z",
+      "taskId": "6933169",
+      "ms": 65815
+    },
+    {
+      "name": "humanoid auto-rig",
+      "startedAt": "2026-11-12T23:48:33.022Z",
+      "taskId": "6933182",
+      "ms": 282422
+    },
+    {
+      "name": "retarget 10 presets (separate, in place)",
+      "startedAt": "2026-11-12T23:53:15.444Z",
+      "taskId": "6933289",
+      "actions": [
+        {
+          "id": "Idle_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Walk_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Jab",
+          "status": "success"
+        },
+        {
+          "id": "Melee_Hook",
+          "status": "success"
+        },
+        {
+          "id": "Sword_Block",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Chest",
+          "status": "success"
+        },
+        {
+          "id": "Death01",
+          "status": "success"
+        },
+        {
+          "id": "Dance_Loop",
+          "status": "success"
+        },
+        {
+          "id": "Punch_Cross",
+          "status": "success"
+        },
+        {
+          "id": "Hit_Knockback",
+          "status": "success"
+        }
+      ],
+      "ms": 33081
+    },
+    {
+      "name": "optimise fighter GLB",
+      "startedAt": "2026-11-12T23:53:48.526Z",
+      "bytes": 2735816,
+      "ms": 423
+    }
+  ],
+  "finishedAt": "2026-11-12T23:53:48.949Z",
+  "totalMs": 460793
+}

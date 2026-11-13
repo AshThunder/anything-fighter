@@ -1,0 +1,41 @@
+{
+  "id": "kitchen-colosseum",
+  "prompt": "An abandoned industrial restaurant kitchen turned into a fighting colosseum: a wide open empty floor in the centre, stainless steel counters and stacked pots around the edges, hanging pans, warm tungsten lights, cinematic, game arena",
+  "startedAt": "2026-11-13T04:08:01.891Z",
+  "steps": [
+    {
+      "name": "world generation create",
+      "startedAt": "2026-11-13T04:08:01.893Z",
+      "taskId": "3FO4K4V8IL5L",
+      "ms": 1276
+    },
+    {
+      "name": "world generation (poll to SUCCEEDED)",
+      "startedAt": "2026-11-13T04:08:03.171Z",
+      "taskIds": [
+        "3FO4K4V8HG19",
+        "3FO4K4V8IL5L"
+      ],
+      "statusChanges": [
+        {
+          "worldId": "3FO4K4V8HG19",
+          "at": "2026-11-13T04:08:03.524Z",
+          "status": "RUNNING",
+          "progress": 0,
+          "updateTime": 1794527125000
+        },
+        {
+          "worldId": "3FO4K4V8IL5L",
+          "at": "2026-11-13T04:08:03.884Z",
+          "status": "PENDING",
+          "progress": 0,
+          "updateTime": 1794542883000
+        }
+      ]
+    }
+  ],
+  "worldIds": [
+    "3FO4K4V8HG19",
+    "3FO4K4V8IL5L"
+  ]
+}

@@ -1,0 +1,79 @@
+import { connection, NextResponse } from "next/server";
+import { createJob, isMockMode, STAGE_LABEL } from "@/lib/aholo";
+import { checkForgeLimit, clientIp, consumeForgeSlot, FORGE_LIMIT_FALLBACK } from "@/lib/forge-limit";
+
+export const maxDuration = 300;
+
+const MAX_BYTES = 8 * 1024 * 1024;
+
+/** POST multipart: photo (File), name, mascot ("1"/"0"), exportPrint ("1"/"0"), prompt (optional). */
+export async function POST(req: Request) {
+  const form = await req.formData();
+  const photo = form.get("photo");
+  if (!(photo instanceof File)) return NextResponse.json({ error: "photo is required" }, { status: 400 });
+  if (photo.size > MAX_BYTES) return NextResponse.json({ error: "photo too large" }, { status: 413 });
+  const ext = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
+
+  let forceMock = false;
+  // Live forges spend Aholo credits (~35 each). Cap them before starting a job.
+  if (!isMockMode()) {
+    const ip = clientIp(req);
+    const prior = await checkForgeLimit(ip);
+    if (!prior.ok) {
+      if (FORGE_LIMIT_FALLBACK === "mock") {
+        forceMock = true;
+      } else {
+        return NextResponse.json(
+          {
+            error: prior.message,
+            code: "FORGE_LIMIT",
+            reason: prior.reason,
+            ipLimit: prior.ipLimit,
+            globalLimit: prior.globalLimit,
+            fallback: "roster",
+          },
+          { status: 429 },
+        );
+      }
+    } else {
+      const slot = await consumeForgeSlot(ip);
+      if (!slot.ok) {
+        if (FORGE_LIMIT_FALLBACK === "mock") {
+          forceMock = true;
+        } else {
+          return NextResponse.json(
+            {
+              error: slot.message,
+              code: "FORGE_LIMIT",
+              reason: slot.reason,
+              ipLimit: slot.ipLimit,
+              globalLimit: slot.globalLimit,
+              fallback: "roster",
+            },
+            { status: 429 },
+          );
+        }
+      }
+    }
+  }
+
+  try {
+    const job = await createJob({
+      name: String(form.get("name") ?? ""),
+      photo: Buffer.from(await photo.arrayBuffer()),
+      photoExt: ext,
+      mascot: form.get("mascot") !== "0",
+      exportPrint: form.get("exportPrint") === "1",
+      prompt: (form.get("prompt") as string | null) ?? undefined,
+      forceMock,
+    });
+    return NextResponse.json({ job, labels: STAGE_LABEL });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  await connection();
+  return NextResponse.json({ mode: isMockMode() ? "mock" : "live", labels: STAGE_LABEL });
+}

@@ -1,0 +1,15 @@
+{
+  "id": "sneaker",
+  "res": "1080x1350",
+  "meshId": "Y3EJYJUTQ34VQPTUKY888888",
+  "startedAt": "2026-11-13T00:21:47.203Z",
+  "steps": [
+    {
+      "name": "offline render 1080x1350 (v5)",
+      "startedAt": "2026-11-13T00:21:47.204Z",
+      "taskId": "L1D0S437ENDO7U2AOAUWIKQMLUFX73W3MI8",
+      "ms": 32744
+    }
+  ],
+  "finishedAt": "2026-11-13T00:22:20.463Z"
+}
