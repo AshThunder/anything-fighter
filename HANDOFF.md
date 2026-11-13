@@ -523,6 +523,12 @@ These come from the owner's phone screenshots (Android Chrome, portrait, about 3
 3. **Fighters too large and close.** They are clipped at the left and right edges in portrait. Fix: a dynamic camera fitted to the aspect ratio that tracks the fighters' midpoint and zooms with their separation, so both always stay full-body in frame.
 4. **Broken hit flash.** A hit fighter (e.g. Mug Shot) renders as a flat, washed-out cream ghost. The material or emissive override is probably not being restored, or it's a transparency issue. Fix: a brief tint, then restore the original materials.
 5. **Mobile controls overflow.** The PUNCH button is cut off at the right edge, so the control dock needs to fit within 390 px.
+**Plan / files (08:35 WAT):**
+- (1) CORS on `holo-cos.aholo3d.cn` is fine (`Access-Control-Allow-Origin: *`), so the redirect itself is legal; the phone most likely failed on the extra redirect hop or a slow/blocked CDN fetch. Fix: `/api/arenas` returns `splatUrls` = [direct Aholo CDN URL, same-origin streaming proxy `/api/assets/arenas/<id>/world.spz?proxy=1`]; `AholoSplatLayer` tries each with retries, shows only a small "Loading arena…" hint, and on total failure the fight switches to the world's panorama (or Neon Ring). Files: `components/arena/AholoSplatLayer.tsx`, `app/api/assets/[...path]/route.ts`, `lib/arenas-server.ts`, `lib/arenas.ts`, `lib/game/store.ts`, `components/game/GameScene.tsx`, `app/fight/FightClient.tsx`.
+- (2) New `lib/splat-fit.ts`: decodes SPZ positions, floor = densest low height band, footprint = largest floor rectangle, camera looks down its long axis, scale so the camera stays inside the room; result is `origin/scale/yaw/half`. Tuned values for Kitchen Colosseum / My Room / Toy Shop live in `lib/arenas.ts` (`SPLAT_PLACEMENT`); future worlds are auto-fitted server-side and cached. `sim.half` clamps fighters to the walkable width (`lib/game/sim.ts`).
+- (3) `CameraRig` in `components/game/Effects.tsx`: FOV 50/45/40 by aspect; distance from the horizontal FOV and fighter separation (zoom out fast, in slowly).
+- (4) `Fighter.tsx`: flash now tints albedo toward red plus a small red emissive at the original intensity; restores exact base colors (was emissive ×3 + bloom → white ghost).
+- (5) `Hud.tsx` TouchPad: 56 px d-pad + diamond (Kick / Block / 72 px Punch) with safe-area padding, ~270 px total.
 None of this needs Aholo credits or world jobs. When it lands, move this block into "Current status" with the commit and deploy IDs.
 
 ## 10. Roadmap / next steps
