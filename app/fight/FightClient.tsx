@@ -35,11 +35,25 @@ export default function FightClient() {
         const a = all.find((f) => f.id === p1) ?? all[0];
         const b = all.find((f) => f.id === p2 && f.id !== a.id) ?? all.find((f) => f.id !== a.id) ?? all[1];
         const ar = arenas.find((x) => x.id === arena);
-        const spec: ArenaSpec =
-          ar && view === "pano" && ar.panoUrl
+        const dbg = debugSplat();
+        const spec: ArenaSpec = dbg
+          ? dbg
+          : ar && view === "pano" && ar.panoUrl
             ? { kind: "pano", url: ar.panoUrl, name: ar.name }
             : ar?.splatUrl
-              ? { kind: "splat", url: ar.splatUrl, name: ar.name, upAxis: ar.upAxis, origin: ar.origin, scale: ar.scale, yaw: ar.yaw }
+              ? {
+                  kind: "splat",
+                  url: ar.splatUrl,
+                  urls: ar.splatUrls,
+                  name: ar.name,
+                  upAxis: ar.upAxis,
+                  origin: ar.origin,
+                  scale: ar.scale,
+                  yaw: ar.yaw,
+                  half: ar.half,
+                  fallbackPano: ar.panoUrl,
+                  ...debugPlacement(),
+                }
               : ar?.panoUrl
                 ? { kind: "pano", url: ar.panoUrl, name: ar.name }
                 : { kind: "stage", name: "Neon Ring" };
@@ -63,4 +77,22 @@ export default function FightClient() {
       </Link>
     </main>
   );
+}
+
+/** Tuning hook (debug only): /fight?...&debug=1&place=ox,oy,oz,scale,yaw,half overrides the splat placement. */
+function debugPlacement(): Partial<ArenaSpec> {
+  if (typeof window === "undefined") return {};
+  const q = new URLSearchParams(window.location.search);
+  const p = q.has("debug") ? q.get("place") : null;
+  if (!p) return {};
+  const v = p.split(",").map(Number);
+  return { origin: [v[0], v[1], v[2]], scale: v[3], yaw: v[4], half: v[5] };
+}
+
+/** Tuning hook (debug only): &debug=1&splat=<url>&place=... renders any splat without an arena entry. */
+function debugSplat(): ArenaSpec | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search);
+  const u = q.has("debug") ? q.get("splat") : null;
+  return u ? { kind: "splat", url: u, name: "debug", upAxis: "Z", ...debugPlacement() } : null;
 }

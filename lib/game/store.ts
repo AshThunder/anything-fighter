@@ -19,6 +19,12 @@ export interface ArenaSpec {
   origin?: [number, number, number];
   scale?: number;
   yaw?: number;
+  /** splat: URLs to try in order (direct signed Aholo URL, then same-origin proxy) */
+  urls?: string[];
+  /** splat: walkable half-width of the fight line (game metres) */
+  half?: number;
+  /** splat: panorama to fall back to if the splat can't load on this device */
+  fallbackPano?: string;
 }
 
 interface GameStore {

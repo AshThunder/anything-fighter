@@ -8,7 +8,7 @@ import { CameraRig, HitSparks } from "./Effects";
 import { Fighter } from "./Fighter";
 import { StudioEnv } from "./StudioEnv";
 import { useGame } from "@/lib/game/store";
-import { resetSim, sim, step } from "@/lib/game/sim";
+import { ARENA_HALF, resetSim, sim, step } from "@/lib/game/sim";
 import { attachInput, readPlayerInput, setTwoPlayer } from "@/lib/game/input";
 import { duckMusic, sfx, startMusic, stopMusic } from "@/lib/game/audio";
 import { startClip, stopClip } from "@/lib/game/recorder";
@@ -105,11 +105,23 @@ export default function GameScene() {
     startMusic();
     return () => stopMusic();
   }, []);
+  useEffect(() => {
+    sim.half = arena.kind === "splat" && arena.half ? arena.half : ARENA_HALF;
+  }, [arena]);
   if (!fighters) return null;
   const splat = arena.kind === "splat" && arena.url;
   return (
     <div className="absolute inset-0" data-game-root>
-      {splat && <AholoSplatLayer url={arena.url!} upAxis={arena.upAxis} origin={arena.origin} scale={arena.scale} yaw={arena.yaw} />}
+      {splat && (
+        <AholoSplatLayer
+          urls={arena.urls?.length ? arena.urls : [arena.url!]}
+          upAxis={arena.upAxis}
+          origin={arena.origin}
+          scale={arena.scale}
+          yaw={arena.yaw}
+          onFail={splatFailed}
+        />
+      )}
       <Canvas
         className="!absolute inset-0"
         shadows
@@ -153,4 +165,10 @@ export default function GameScene() {
       </Canvas>
     </div>
   );
+}
+
+/** Splat couldn't load on this device: fall back to the world's panorama, else the built-in ring. */
+function splatFailed() {
+  const a = useGame.getState().arena;
+  useGame.setState({ arena: a.fallbackPano ? { kind: "pano", url: a.fallbackPano, name: a.name } : { kind: "stage", name: a.name } });
 }

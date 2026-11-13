@@ -369,17 +369,23 @@ function TouchPad() {
       press(a);
     },
   });
-  const btn = "pointer-events-auto h-16 w-16 touch-none select-none rounded-full border-2 border-white/25 bg-black/55 font-arcade text-[11px] text-orange-50 shadow-[inset_0_-3px_0_rgba(0,0,0,0.4)] active:scale-90 active:bg-orange-500/50";
+  // Sized to fit a 360–390 px portrait screen: d-pad left, arcade diamond right (Punch biggest, under the thumb).
+  const btn =
+    "pointer-events-auto flex shrink-0 touch-none select-none items-center justify-center rounded-full border-2 border-white/25 bg-black/55 font-arcade text-[10px] leading-none text-orange-50 shadow-[inset_0_-3px_0_rgba(0,0,0,0.4)] active:scale-90 active:bg-orange-500/50";
   return (
-    <div className="absolute inset-x-0 bottom-[max(1.25rem,env(safe-area-inset-bottom))] flex items-end justify-between px-4 [@media(hover:hover)]:hidden" data-touchpad>
-      <div className="flex gap-3">
-        <button className={btn} {...hold("left")}>◀</button>
-        <button className={btn} {...hold("right")}>▶</button>
+    <div
+      className="absolute inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] flex items-end justify-between gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] [@media(hover:hover)]:hidden"
+      data-touchpad
+    >
+      <div className="flex gap-2">
+        <button className={`${btn} h-14 w-14 text-base`} aria-label="Move left" {...hold("left")}>◀</button>
+        <button className={`${btn} h-14 w-14 text-base`} aria-label="Move right" {...hold("right")}>▶</button>
       </div>
-      <div className="flex items-end gap-3">
-        <button className={btn} {...hold("block")}>Block</button>
-        <button className={`${btn} h-[4.5rem] w-[4.5rem] border-sky-400/60 bg-sky-500/25`} {...tap("kick")}>Kick</button>
-        <button className={`${btn} h-20 w-20 border-orange-400/70 bg-orange-500/35`} {...tap("punch")}>Punch</button>
+      <div className="grid grid-cols-[3.5rem_4.5rem] grid-rows-[3.5rem_4.5rem] gap-1.5">
+        <span />
+        <button className={`${btn} h-14 w-14 justify-self-center border-sky-400/60 bg-sky-500/25`} {...tap("kick")}>Kick</button>
+        <button className={`${btn} h-14 w-14 self-center`} {...hold("block")}>Block</button>
+        <button className={`${btn} h-[4.5rem] w-[4.5rem] border-orange-400/70 bg-orange-500/35 text-[11px]`} {...tap("punch")}>Punch</button>
       </div>
     </div>
   );
