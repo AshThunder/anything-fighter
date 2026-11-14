@@ -106,12 +106,19 @@ function ForgePanel({ live }: { live: boolean | null }) {
       setBusy(false);
       return;
     }
-    if (r.deleteToken) {
-      try {
-        sessionStorage.setItem(`af-delete:${r.job.id}`, r.deleteToken);
-      } catch {
-        /* private mode */
-      }
+    try {
+      if (r.deleteToken) sessionStorage.setItem(`af-delete:${r.job.id}`, r.deleteToken);
+      // Local preview for the forge page: the forger should always see their own photo,
+      // even when it is not public in the gallery (no server photo URL in that case).
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const rdr = new FileReader();
+        rdr.onload = () => res(String(rdr.result));
+        rdr.onerror = () => rej(rdr.error);
+        rdr.readAsDataURL(blob);
+      });
+      sessionStorage.setItem(`af-preview:${r.job.id}`, dataUrl);
+    } catch {
+      /* private mode or quota */
     }
     router.push(`/forge/${r.job.id}`);
   };
