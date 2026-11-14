@@ -83,6 +83,42 @@ body {
 }
 @keyframes skeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
+/* Forge progress: in-progress spinner + sliding solid highlight (no gradients). */
+.forge-spin {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 2px solid var(--color-line-strong);
+  border-top-color: var(--color-blaze);
+  animation: forge-spin 0.7s linear infinite;
+}
+.forge-bar-active {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-blaze);
+}
+.forge-bar-active::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: var(--color-blaze-hi);
+  animation: forge-bar 1.2s ease-in-out infinite;
+}
+@keyframes forge-spin { to { transform: rotate(360deg); } }
+@keyframes forge-bar {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(350%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .forge-spin { animation: none; }
+  .forge-bar-active::after { animation: none; display: none; }
+}
+
 @keyframes pop {
   0% { transform: scale(0.6); opacity: 0; }
   40% { transform: scale(1.12); opacity: 1; }
