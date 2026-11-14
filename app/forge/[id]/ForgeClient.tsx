@@ -95,6 +95,17 @@ export default function ForgeClient() {
     },
     () => null,
   );
+  const localPhoto = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        return id ? sessionStorage.getItem(`af-preview:${id}`) : null;
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
 
   /**
    * Poll loop. Each GET advances the job server-side, so polling must never silently stop: the old version
@@ -240,7 +251,7 @@ export default function ForgeClient() {
       <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
         <section className={`grid gap-5 ${lost ? "" : "md:grid-cols-[260px_1fr]"}`}>
           <div className={`flex gap-3 md:flex-col ${lost ? "hidden" : ""}`}>
-            {([fighter?.photoPublic && fighter.photoUrl ? fighter.photoUrl : undefined, asset(job?.files.mascot)] as (string | undefined)[]).map((src, i) => (
+            {([localPhoto || (fighter?.photoPublic ? fighter.photoUrl : undefined), asset(job?.files.mascot)] as (string | undefined)[]).map((src, i) => (
               <div key={i} className="relative aspect-square w-1/2 overflow-hidden rounded-xl border border-line bg-panel md:w-full">
                 {src ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -252,7 +263,7 @@ export default function ForgeClient() {
                   />
                 ) : (
                   <div className={`flex h-full items-center justify-center px-3 text-center text-sm text-muted ${i && !lost && !job?.error ? "skeleton" : ""}`}>
-                    {i ? (lost ? "—" : "Concept art incoming…") : "🔒 Kept private"}
+                    {i ? (lost ? "—" : "Concept art incoming…") : "Your photo"}
                   </div>
                 )}
                 <span className="absolute left-2 top-2 rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-fg">
