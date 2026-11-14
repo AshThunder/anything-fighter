@@ -50,6 +50,11 @@ const TIPS = [
   "RenderCloud path-traces a KO poster of your fighter mid-punch.",
 ];
 
+function fmtAge(s: number) {
+  const n = Math.max(0, Math.floor(s));
+  return n >= 60 ? `${Math.floor(n / 60)}m ${n % 60}s` : `${n}s`;
+}
+
 interface JobView {
   id: string;
   name: string;
@@ -188,11 +193,12 @@ export default function ForgeClient() {
   }, [id, loop]);
 
   useEffect(() => {
-    const i = setInterval(() => {
-      setNow(Date.now());
-      setTip((t) => t + 1);
-    }, 4000);
-    return () => clearInterval(i);
+    const clock = setInterval(() => setNow(Date.now()), 1000);
+    const tips = setInterval(() => setTip((t) => t + 1), 4000);
+    return () => {
+      clearInterval(clock);
+      clearInterval(tips);
+    };
   }, []);
 
   const startPractice = async () => {
@@ -294,21 +300,37 @@ export default function ForgeClient() {
                     ) : job?.error ? (
                       <span className="text-danger">Stopped at step {idx + 1}: {cur?.label}</span>
                     ) : cur ? (
-                      <>
-                        Step {idx + 1} of {stages.length}: <span className="text-blaze">{cur.label}</span>
-                      </>
+                      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="forge-spin" aria-hidden />
+                        <span>
+                          Step {idx + 1} of {stages.length}: <span className="text-blaze">{cur.label}</span>
+                        </span>
+                        <span className="font-normal text-muted">working · {fmtAge(stageAge)}</span>
+                      </span>
                     ) : (
                       "Starting…"
                     )}
                   </span>
                   {!fighter && !job?.error && remaining > 0 && <span className="text-muted">about {Math.ceil(remaining / 60)} min left</span>}
                 </div>
-                <div className="flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={stages.length} aria-valuenow={fighter ? stages.length : Math.max(0, idx)}>
+                <div
+                  className="flex gap-1"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={stages.length}
+                  aria-valuenow={fighter ? stages.length : Math.max(0, idx)}
+                  aria-valuetext={cur && !fighter && !job?.error ? `Step ${idx + 1} of ${stages.length}, working ${fmtAge(stageAge)}` : undefined}
+                >
                   {stages.map((s, i) => {
                     const done = i < idx || !!fighter;
                     const active = i === idx && !job?.error && !fighter;
                     const failed = i === idx && !!job?.error;
-                    return <span key={s.key} className={`h-2.5 flex-1 rounded-sm ${failed ? "bg-danger" : done ? "bg-ok" : active ? "animate-pulse bg-blaze" : "bg-line"}`} />;
+                    return (
+                      <span
+                        key={s.key}
+                        className={`h-2.5 flex-1 rounded-sm ${failed ? "bg-danger" : done ? "bg-ok" : active ? "forge-bar-active" : "bg-line"}`}
+                      />
+                    );
                   })}
                 </div>
               </div>
@@ -328,17 +350,23 @@ export default function ForgeClient() {
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-display text-[13px] font-bold">
-                      <span
-                        aria-hidden
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
-                          failed ? "bg-danger text-ink" : done ? "bg-ok text-ink" : active ? "animate-pulse bg-blaze text-ink" : "bg-line text-muted"
-                        }`}
-                      >
-                        {failed ? "✗" : done ? "✓" : i + 1}
-                      </span>
+                      {active ? (
+                        <span className="forge-spin h-5 w-5 border-[2.5px]" aria-hidden />
+                      ) : (
+                        <span
+                          aria-hidden
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
+                            failed ? "bg-danger text-ink" : done ? "bg-ok text-ink" : "bg-line text-muted"
+                          }`}
+                        >
+                          {failed ? "✗" : done ? "✓" : i + 1}
+                        </span>
+                      )}
                       <span className={done || active || failed ? "text-fg" : ""}>{s.label}</span>
                     </div>
-                    <div className={`mt-0.5 ${done || active || failed ? "text-muted" : ""}`}>{s.tool}</div>
+                    <div className={`mt-0.5 ${done || active || failed ? "text-muted" : ""}`}>
+                      {active ? `working · ${fmtAge(stageAge)}` : s.tool}
+                    </div>
                   </li>
                 );
               })}
