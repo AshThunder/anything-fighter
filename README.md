@@ -1,4 +1,4 @@
-> **Handoff for another agent:** see [`HANDOFF.md`](./HANDOFF.md) — full project context, architecture, API cheat-sheet, status, and next steps.
+
 
 # Anything Fighter 🥊: Aholo 3D AI Hackathon entry
 
